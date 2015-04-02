@@ -393,6 +393,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
         // for each frame get coordinates of every atom from python
         arglist_getCoords = Py_BuildValue("(i)", i_frames);
         coords = PyEval_CallObject(getCoords, arglist_getCoords);
+
         // Now we need to iterate over every water atom inside grid for its voxel assignment
         for (i_wat = 0; i_wat < n_wat; i_wat ++) {
             wat_id = (int *) PyArray_GETPTR1(wat_oxygen_ids, i_wat); // obtain index for this atom (this is not array index, this is unique atom id)
@@ -405,7 +406,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
             // this means do calculations only waters inside the grid
             if (*wat_x - grid_orig_x <= grid_max_x && *wat_y - grid_orig_y <= grid_max_y && *wat_z - grid_orig_z <= grid_max_z &&
                 *wat_x - grid_orig_x >= -1.5 && *wat_y - grid_orig_y >= -1.5 && *wat_z - grid_orig_z >= -1.5){
-                //printf("water %i is inside the grid\n!", *wat_id);
+                    //printf("water %i is inside the grid!\n", *wat_id);
                 if (*wat_x - grid_orig_x >= 0 && *wat_y - grid_orig_y >= 0 && *wat_z - grid_orig_z >= 0){
                     // transform water coordinates in units of grid dimensions
                     grid_index_x = (*wat_x - grid_orig_x)/0.5;
@@ -428,6 +429,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                         h2y = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 1); 
                         h2z = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 2);
                         //printf("Energy value for this voxel: %f\n",*(double *)PyArray_GETPTR2(voxel_data, voxel_id, 13));
+                        //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
                         // send water x, y, z to python
                         arglist_sendWatCoords = Py_BuildValue("(iddddddddd)", voxel_id, *wat_x, *wat_y, *wat_z, *h1x, *h1y, *h1z, *h2x, *h2y, *h2z);
                         PyEval_CallObject(sendWatCoords, arglist_sendWatCoords);
@@ -443,6 +445,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                         *(double *)PyArray_GETPTR2(voxel_data, voxel_id, 6) += 2.0;
                         //*(int *) PyArray_GETPTR2(voxel_data, voxel_id, 3) += 1.0;
                         // 
+                        //printf("voxel id: %i\n", voxel_id);
                         
                         }
                     }

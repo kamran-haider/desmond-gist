@@ -26,6 +26,7 @@ __doc__='''
 _version = "$Revision: 1.0 $"
 # import shrodinger modules
 from schrodinger import structure
+
 from schrodinger.trajectory.desmondsimulation import create_simulation
 from schrodinger.trajectory.atomselection import select_component
 from schrodinger.trajectory.atomselection import FrameAslSelection as FAS
@@ -39,7 +40,7 @@ import _gistcalcs as gistcalcs
 # import other python modules
 import numpy as np
 #from scipy.spatial import KDTree, cKDTree
-import time
+import sys, time
 #import math
 
 #################################################################################################################
@@ -257,9 +258,8 @@ class Gist:
             voxel_array[v_count, 2] = point[1]
             voxel_array[v_count, 3] = point[2]
             voxel_array[v_count, 0] = v_count
-            
             #print voxel_dict_new[v_count, 0], voxel_dict_new[v_count, 1], voxel_dict_new[v_count, 2]
-            #voxel_dict[v_count] = [[]] # create a dictionary key-value pair with voxel index as key and it's coords as
+            voxel_dict[v_count] = [[]] # create a dictionary key-value pair with voxel index as key and it's coords as
             #voxel_dict[v_count].append(np.zeros(14, dtype="float64"))
             v_count += 1
         return voxel_array, voxel_dict
@@ -357,10 +357,9 @@ class Gist:
                 # add angle information for this water 
                 #angwat = np.asarray([theta, phi, psi], dtype="float64")
         #angle_array.append([theta, phi, psi])
-        # Finish translational and rotational coords for waters in this voxel
+        # Finish translational and rotation../../HSA_A
         # perform nearest neighbor search for each water for this voxel
         # first in translational space
-
         self.voxeldict[voxel_id][0].append([theta, phi, psi])
         #angle_array = np.asarray(angle_array, dtype="float64")
     
@@ -369,9 +368,7 @@ class Gist:
     def getVoxelEnergies(self, n_frame, s_frame):
         # testing new GIST module
         wat_index_info = np.array([self.n_atom_sites, self.n_pseudo_sites, self.wat_begin_gid, self.pseudo_begin_gid, self.oxygen_index], dtype="int")
-        gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, 
-                    wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box,
-                    self.dims.astype("float"), self.origin, self.voxeldata)
+        gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata)
 
 #*********************************************************************************************#
     def getVoxelEntropies(self, n_frame, res, logfile):

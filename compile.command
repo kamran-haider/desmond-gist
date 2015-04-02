@@ -1,0 +1,1 @@
+gcc -O3 -lm -fPIC -shared -I /opt/schrodinger2014-2/mmshare-v26017/lib/Linux-x86_64/include/python2.7/ -I /opt/schrodinger2014-2/mmshare-v26017/lib/Linux-x86_64/lib/python2.7/site-packages/numpy/core/include/ -o _gistcalcs.so _gistcalcs.c

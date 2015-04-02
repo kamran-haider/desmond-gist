@@ -7,10 +7,12 @@ Created on Thu Apr  2 15:03:09 2015
 
 
 #*********************************************************************************************#
-
+import time
+import numpy as np
 from schrodinger import structure
 from optparse import OptionParser
 from gist_desmond_composite import Gist
+
 parser = OptionParser()
 parser.add_option("-i", "--input_cms", dest="cmsname", type="string", help="Input CMS file")
 parser.add_option("-t", "--input_trajectory", dest="trjname", type="string", help="Input trajectory directory")
@@ -41,7 +43,6 @@ gist_logfile.write('delta 0 0 %.1f\n' % (g.spacing[2]))
 gist_logfile.write('object 2 class gridconnections counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2]))
 gist_logfile.write('object 3 class array type double rank 0 items %d data follows\n' % (g.grid.shape[0]*g.grid.shape[1]*g.grid.shape[2]))
 gist_logfile.write("#EndHeader\n")
-gist_logfile.close()
 print "Performing energy calculations ..."
 t = time.time()
 g.getVoxelEnergies(options.frames, options.start_frame)
@@ -52,6 +53,7 @@ t = time.time()
 g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
 #print "entropy calcs took seconds.", time.time() - t    
 g.writeGistData(options.outfile)
+gist_logfile.close()
     
 # commands to run
 #cd /data/Complementarity_Project_Data/systems/methane/new_gist_test_calcs

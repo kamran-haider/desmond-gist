@@ -1,0 +1,1 @@
+$SCHRODINGER/run run_gist.py -i ../../HSA_Archive_Desmond_Trajectories/methane/desmond_sys/desmond_rebuild.cms -t ../../HSA_Archive_Desmond_Trajectories/methane/desmond_trj/ -l ../../HSA_Archive_Desmond_Trajectories/methane/desmond_sys/methane.pdb -f 10 -s 0 -o methane_gist
