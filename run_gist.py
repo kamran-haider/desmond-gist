@@ -8,7 +8,7 @@ Created on Thu Apr  2 15:03:09 2015
 
 #*********************************************************************************************#
 
-
+from schrodinger import structure
 from optparse import OptionParser
 from gist_desmond_composite import Gist
 parser = OptionParser()
