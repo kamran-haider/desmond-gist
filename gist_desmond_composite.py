@@ -461,12 +461,13 @@ class Gist:
 #*********************************************************************************************#
                     
     def writeGistData(self, outfile):
-        f = open("energy_data_"+outfile+".txt", "w")
-        header_2 = "voxel x y z wat g_O g_H Esw-dens Esw-norm Eww-dens Eww-norm Eww-nbr-dens Eww-nbr-norm nbr-dens nbr-norm enc-dens enc-norm\n"
+        f = open("gist_data_"+outfile+".txt", "w")
+        header_2 = "voxel x y z wat g_O g_H dTStr-dens dTStr-norm dTSor-dens dTSor-norm Esw-dens Esw-norm Eww-dens Eww-norm Eww-nbr-dens Eww-nbr-norm nbr-dens nbr-norm enc-dens enc-norm\n"
         f.write(header_2)
         for k in self.voxeldata:
-            l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f\n" % \
+            l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f\n" % \
                 (k[0], k[1], k[2], k[3], k[4], k[5], k[6],
+                 k[7], k[8], k[9], k[10],
                 k[11], k[12], k[13], k[14], k[15], k[16], k[17], k[18], k[19], k[20])
                 #print l
             f.write(l)
