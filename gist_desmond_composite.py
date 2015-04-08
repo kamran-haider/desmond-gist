@@ -26,6 +26,7 @@ __doc__='''
 _version = "$Revision: 1.0 $"
 # import shrodinger modules
 from schrodinger import structure
+
 from schrodinger.trajectory.desmondsimulation import create_simulation
 from schrodinger.trajectory.atomselection import select_component
 from schrodinger.trajectory.atomselection import FrameAslSelection as FAS
@@ -39,7 +40,7 @@ import _gistcalcs as gistcalcs
 # import other python modules
 import numpy as np
 #from scipy.spatial import KDTree, cKDTree
-import time
+import sys, time
 #import math
 
 #################################################################################################################
@@ -257,9 +258,8 @@ class Gist:
             voxel_array[v_count, 2] = point[1]
             voxel_array[v_count, 3] = point[2]
             voxel_array[v_count, 0] = v_count
-            
             #print voxel_dict_new[v_count, 0], voxel_dict_new[v_count, 1], voxel_dict_new[v_count, 2]
-            #voxel_dict[v_count] = [[]] # create a dictionary key-value pair with voxel index as key and it's coords as
+            voxel_dict[v_count] = [[]] # create a dictionary key-value pair with voxel index as key and it's coords as
             #voxel_dict[v_count].append(np.zeros(14, dtype="float64"))
             v_count += 1
         return voxel_array, voxel_dict
@@ -357,10 +357,9 @@ class Gist:
                 # add angle information for this water 
                 #angwat = np.asarray([theta, phi, psi], dtype="float64")
         #angle_array.append([theta, phi, psi])
-        # Finish translational and rotational coords for waters in this voxel
+        # Finish translational and rotation../../HSA_A
         # perform nearest neighbor search for each water for this voxel
         # first in translational space
-
         self.voxeldict[voxel_id][0].append([theta, phi, psi])
         #angle_array = np.asarray(angle_array, dtype="float64")
     
@@ -369,9 +368,7 @@ class Gist:
     def getVoxelEnergies(self, n_frame, s_frame):
         # testing new GIST module
         wat_index_info = np.array([self.n_atom_sites, self.n_pseudo_sites, self.wat_begin_gid, self.pseudo_begin_gid, self.oxygen_index], dtype="int")
-        gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, 
-                    wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box,
-                    self.dims.astype("float"), self.origin, self.voxeldata)
+        gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata)
 
 #*********************************************************************************************#
     def getVoxelEntropies(self, n_frame, res, logfile):
@@ -464,69 +461,15 @@ class Gist:
 #*********************************************************************************************#
                     
     def writeGistData(self, outfile):
-        f = open("energy_data_"+outfile+".txt", "w")
-        header_2 = "voxel x y z wat g_O g_H Esw-dens Esw-norm Eww-dens Eww-norm Eww-nbr-dens Eww-nbr-norm nbr-dens nbr-norm enc-dens enc-norm\n"
+        f = open("gist_data_"+outfile+".txt", "w")
+        header_2 = "voxel x y z wat g_O g_H dTStr-dens dTStr-norm dTSor-dens dTSor-norm Esw-dens Esw-norm Eww-dens Eww-norm Eww-nbr-dens Eww-nbr-norm nbr-dens nbr-norm enc-dens enc-norm\n"
         f.write(header_2)
         for k in self.voxeldata:
-            l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f\n" % \
+            l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f\n" % \
                 (k[0], k[1], k[2], k[3], k[4], k[5], k[6],
+                 k[7], k[8], k[9], k[10],
                 k[11], k[12], k[13], k[14], k[15], k[16], k[17], k[18], k[19], k[20])
                 #print l
             f.write(l)
         f.close()
         
-
-#*********************************************************************************************#
-
-if (__name__ == '__main__') :
-
-    _version = "$Revision: 0.0 $"
-    
-    from optparse import OptionParser
-    parser = OptionParser()
-    parser.add_option("-i", "--input_cms", dest="cmsname", type="string", help="Input CMS file")
-    parser.add_option("-t", "--input_trajectory", dest="trjname", type="string", help="Input trajectory directory")
-    parser.add_option("-l", "--ligand", dest="ligand", type="string", help="PDB file for the ligand")
-    parser.add_option("-f", "--frames", dest="frames", type="int", help="Number of frames")
-    parser.add_option("-s", "--start_frame", dest="start_frame", type="int", help="Number of frames")
-    parser.add_option("-o", "--output", dest="outfile", type="string", help="Output log file")
-    
-    (options, args) = parser.parse_args()
-    print "Setting up GIST calculations."
-    lig = structure.StructureReader(options.ligand).next()
-    gridcntr = sum(lig.getXYZ())/len(lig.atom)
-    ############################################################################
-    # Edit this section for different systems
-    gridspacn = [ 0.5, 0.5, 0.5 ]
-    #gridcntr = np.array([13.95, 14.59, 15.08]) # dimensions
-    griddim = [ 10, 10, 10 ]
-
-    ############################################################################
-    g = Gist(options.cmsname, options.trjname, gridcntr, gridspacn, griddim)
-    gist_logfile = open("desmond-gist-energy.log", "w") 
-    gist_logfile.write("#Grid setup for the system in DX header format:\n")
-    gist_logfile.write('# Data calculated by the VMD volmap function\n')
-    gist_logfile.write('object 1 class gridpositions counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2])) 
-    gist_logfile.write('origin %.1f %.1f %.1f\n' % (g.origin[0], g.origin[1], g.origin[2]))
-    gist_logfile.write('delta %.1f 0 0\n' % (g.spacing[0]))
-    gist_logfile.write('delta 0 %.1f 0\n' % (g.spacing[1]))
-    gist_logfile.write('delta 0 0 %.1f\n' % (g.spacing[2]))
-    gist_logfile.write('object 2 class gridconnections counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2]))
-    gist_logfile.write('object 3 class array type double rank 0 items %d data follows\n' % (g.grid.shape[0]*g.grid.shape[1]*g.grid.shape[2]))
-    gist_logfile.write("#EndHeader\n")
-    gist_logfile.close()
-    print "Performing energy calculations ..."
-    t = time.time()
-    g.getVoxelEnergies(options.frames, options.start_frame)
-    print "energy calcs took seconds.", time.time() - t
-    g.normalizeVoxelQuantities(options.frames, gist_logfile)
-    t = time.time()
-    #print "Performing entropy calculations ..."
-    g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
-    #print "entropy calcs took seconds.", time.time() - t    
-    g.writeGistData(options.outfile)
-    
-# commands to run
-#cd /data/Complementarity_Project_Data/systems/methane/new_gist_test_calcs
-#$SCHRODINGER/run /data/Dropbox/gist-desmond-v3/gist_desmond_energy.py -i ../simulation/md_trial_04/04pd/04_pd.cms -t ../simulation/md_trial_04/04pd/j04_pd_mth_trj/ -l ../simulation/md_trial_04/04pd/methane.mae -f 10 -d 0 -o test
-#gcc -O3 -lm -fPIC -shared -I /home/kamran/desmond/mmshare-v24012/lib/Linux-x86_64/include/python2.7 -I /home/kamran/desmond/mmshare-v24012/lib/Linux-x86_64/lib/python2.7/site-packages/numpy/core/include/ -o _gistcalcs.so _gistcalcs.c
