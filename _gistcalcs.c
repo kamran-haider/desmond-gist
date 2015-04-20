@@ -451,9 +451,13 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                     }
                 }
             //printf("wat_id x y z max_x max_y max_z: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f \n", *wat_id, *wat_x, *wat_y, *wat_z, *grid_max_x, *grid_max_y, *grid_max_z);
+
             }
         //printf("waters inside grid! %i\n", frame_wat);
-        }
+        printf("Reference count for coords: %i\n", PyArray_REFCOUNT(coords));
+        free(coords);
+        //Py_DECREF(coords)
+        } // finish iterating over frames
     return Py_BuildValue("i", 1);
     
     }
@@ -503,8 +507,8 @@ PyObject *_gistcalcs_getNNOr(PyObject *self, PyObject *args){
             
         }
 
-        
-    }
+    
+    } // finish iterating over frames
     // 
     //*(double *)PyArray_GETPTR1(ent, 2) += voxel_dTSor_norm;
     return Py_BuildValue("f", voxel_dTSor);

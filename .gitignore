@@ -2,8 +2,16 @@
 __pycache__/
 *.py[cod]
 
+*.sublime-workspace
+
+# various text files
+*.com
+*.run
+*.log
+
 # C extensions
 *.so
+
 
 # Distribution / packaging
 .Python
