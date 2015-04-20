@@ -4,6 +4,10 @@ __pycache__/
 
 # C extensions
 *.so
+# various text file
+*.run
+#sublime workspace files
+*.sublime-workspace
 
 # Distribution / packaging
 .Python
