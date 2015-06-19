@@ -27,11 +27,19 @@ lig = structure.StructureReader(options.ligand).next()
 gridcntr = sum(lig.getXYZ())/len(lig.atom)
 ############################################################################
 # Edit this section for different systems
-gridspacn = [ 0.5, 0.5, 0.5 ]
+#gridspacn = [ 0.5, 0.5, 0.5 ]
 #gridcntr = np.array([13.95, 14.59, 15.08]) # dimensions
-griddim = [ 10, 10, 10 ]
+#griddim = [ 10, 10, 10 ]
+############################################################################
+############################################################################
+# try putting this in the argument
+# Edit this section for different systems
+gridspacn = [ 0.5, 0.5, 0.5 ]
+gridcntr = np.array([-12.76, -8.139, -2.905]) # dimensions
+griddim = [ 44, 42, 50 ]
 ############################################################################
 g = Gist(options.cmsname, options.trjname, gridcntr, gridspacn, griddim)
+# Moving this to the main GIST code
 gist_logfile = open("desmond-gist-energy.log", "w") 
 gist_logfile.write("#Grid setup for the system in DX header format:\n")
 gist_logfile.write('# Data calculated by the VMD volmap function\n')
@@ -51,7 +59,7 @@ g.normalizeVoxelQuantities(options.frames, gist_logfile)
 t = time.time()
 #print "Performing entropy calculations ..."
 g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
-#print "entropy calcs took seconds.", time.time() - t    
+print "entropy calcs took seconds.", time.time() - t    
 g.writeGistData(options.outfile)
 gist_logfile.close()
     

@@ -454,7 +454,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
 
             }
         //printf("waters inside grid! %i\n", frame_wat);
-        printf("Reference count for coords: %i\n", PyArray_REFCOUNT(coords));
+        //printf("Reference count for coords: %i\n", PyArray_REFCOUNT(coords));
         free(coords);
         //Py_DECREF(coords)
         } // finish iterating over frames

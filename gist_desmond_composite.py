@@ -25,7 +25,6 @@ __doc__='''
 '''
 _version = "$Revision: 1.0 $"
 # import shrodinger modules
-from schrodinger import structure
 
 from schrodinger.trajectory.desmondsimulation import create_simulation
 from schrodinger.trajectory.atomselection import select_component
@@ -39,8 +38,8 @@ import _gistcalcs as gistcalcs
 
 # import other python modules
 import numpy as np
+import sys
 #from scipy.spatial import KDTree, cKDTree
-import sys, time
 #import math
 
 #################################################################################################################
