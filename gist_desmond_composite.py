@@ -32,6 +32,9 @@ from schrodinger.trajectory.atomselection import select_component
 from schrodinger.trajectory.atomselection import FrameAslSelection as FAS
 from schrodinger.application.desmond.cms import Vdw
 import schrodinger.application.desmond.ffiostructure as ffiostructure
+
+from schrodinger.structure import StructureWriter, Structure, PDBWriter, create_new_structure
+
 #import schrodinger.infra.mmlist as mmlist
 #import schrodinger.infra.mm as mm
 # import C-helper module
@@ -247,7 +250,9 @@ class Gist:
     def _initializeVoxelDict(self):
         voxel_dict = {}
         v_count = 0
-        voxel_array = np.zeros((self.grid.size, 21), dtype="float64")
+        voxel_array = np.zeros((self.grid.size, 25), dtype="float64")
+        center_voxel_id = 0
+        min_dist = 100
         #print voxel_dict_new.shape
         for index, value in np.ndenumerate(self.grid): 
             #point = grid.pointForIndex(index) # get cartesian coords for the grid point
@@ -259,9 +264,15 @@ class Gist:
             voxel_array[v_count, 3] = point[2]
             voxel_array[v_count, 0] = v_count
             #print voxel_dict_new[v_count, 0], voxel_dict_new[v_count, 1], voxel_dict_new[v_count, 2]
-            voxel_dict[v_count] = [[]] # create a dictionary key-value pair with voxel index as key and it's coords as
+            voxel_dict[v_count] = [[], []] # create a dictionary key-value pair with voxel index as key and it's coords as
             #voxel_dict[v_count].append(np.zeros(14, dtype="float64"))
+            dist = np.linalg.norm(self.center-point)
+            if dist < min_dist:
+                min_dist = dist
+                center_voxel_id = v_count
             v_count += 1
+        #print "central voxel id is: ", center_voxel_id
+        self.center_voxel = center_voxel_id
         return voxel_array, voxel_dict
 
 #*********************************************************************************************#
@@ -288,7 +299,7 @@ class Gist:
         coords = np.asarray(coords)
         return coords
 #*********************************************************************************************#
-    def getvoxelWatCoords(self, voxel_id, ox, oy, oz, h1x, h1y, h1z, h2x, h2y, h2z):
+    def getvoxelWatCoords(self, voxel_id, ox, oy, oz, h1x, h1y, h1z, h2x, h2y, h2z, n_frame, wat_id):
         pi = np.pi
         twopi = 2*np.pi
         wat_coords = [ox, oy, oz, h1x, h1y, h1z, h2x, h2y, h2z]
@@ -361,6 +372,7 @@ class Gist:
         # perform nearest neighbor search for each water for this voxel
         # first in translational space
         self.voxeldict[voxel_id][0].append([theta, phi, psi])
+        self.voxeldict[voxel_id][1].append([n_frame, wat_id])
         #angle_array = np.asarray(angle_array, dtype="float64")
     
 #*********************************************************************************************#
@@ -369,6 +381,7 @@ class Gist:
         # testing new GIST module
         wat_index_info = np.array([self.n_atom_sites, self.n_pseudo_sites, self.wat_begin_gid, self.pseudo_begin_gid, self.oxygen_index], dtype="int")
         gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata)
+
 
 #*********************************************************************************************#
     def getVoxelEntropies(self, n_frame, res, logfile):
@@ -406,15 +419,13 @@ class Gist:
         dTSor_tot *= voxel_vol
         logfile.write("Total Solute-Water Translational Entropy over the grid: %.8f\n" % dTStr_tot)
         logfile.write("Total Solute-Water Orientational Entropy over the grid: %.8f\n" % dTSor_tot)
-        print "Total Solute-Water Orientational Entropy over the grid: %.8f" % dTSor_tot
-        print "Total Solute-Water Translational Entropy over the grid: %.8f" % dTStr_tot
-        print "Memory taken up by water euler angles Kbs", total_mem/1000
+        #print "Total Solute-Water Orientational Entropy over the grid: %.8f" % dTSor_tot
+        #print "Total Solute-Water Translational Entropy over the grid: %.8f" % dTStr_tot
+        #print "Memory taken up by water euler angles Kbs", total_mem/1000
 #*********************************************************************************************#
-
     def normalizeVoxelQuantities(self, n_frame, logfile):
         voxel_vol = 0.5**3
-        rho_bulk = 0.0329
-        bulkwaterpervoxel = voxel_vol*rho_bulk*n_frame
+        rho_bulk = 0.0334
         Eswtot = 0
         Ewwtot = 0
         Ewwnbrtot = 0
@@ -423,9 +434,10 @@ class Gist:
             if k[4] >= 1.0:
                 
                 # number density of oxygen centers
-                k[5] = k[4]/bulkwaterpervoxel
+                voxel_dens = k[4]/(n_frame*voxel_vol)
+                k[5] = voxel_dens/rho_bulk
                 # number density of hydrogens
-                k[6] = k[6]/(bulkwaterpervoxel*2)
+                #k[6] = k[6]/(bulkwaterpervoxel*2)
                 # energy density-weighted and normalized
                 k[11] = k[12]/(n_frame*voxel_vol*2.0) # E_sw_dens
                 Eswtot += k[11]
@@ -446,6 +458,15 @@ class Gist:
                 k[19] += enclosure
                 k[20] = k[19]/(n_frame*voxel_vol) # Enclosure-dens
                 nwat += k[4]/(n_frame*voxel_vol)
+                k[21] /= (0.20822678*n_frame*voxel_vol)
+                k[22] /= (0.20822678*n_frame*voxel_vol)
+                k[23] /= (0.20822678*n_frame*voxel_vol)
+
+                #k[21] /= k[4]
+                #k[22] /= k[4]
+                #k[23] /= k[4]
+                #k[24] = 
+                #print k[21], k[22], k[23]
 
                 
         Eswtot *= voxel_vol
@@ -453,11 +474,32 @@ class Gist:
         Ewwnbrtot *= voxel_vol
         nwat *= voxel_vol
         print "Total number of water molecules over the grid: ", nwat
-        print "Total Solute-Water Energy over the grid: ", Eswtot
-        print "Total Water-Water Energy over the grid: ", Ewwtot
-        print "Total Water-Water Nbr Energy over the grid: ", Ewwnbrtot
+        #print "Total Solute-Water Energy over the grid: ", Eswtot
+        #print "Total Water-Water Energy over the grid: ", Ewwtot
+        #print "Total Water-Water Nbr Energy over the grid: ", Ewwnbrtot
         #logfile.write("Total Solute-Water Energy over the grid: %.8f\n" % Eswtot)
         #logfile.write("Total Water-Water Energy over the grid: %.8f\n" % Ewwtot)
+#*********************************************************************************************#
+    def getDipoleDotProduct(self):
+        center_voxel_dipole = self.voxeldata[self.center_voxel][21:24]
+        center_voxel_dipole_norm = center_voxel_dipole/np.linalg.norm(center_voxel_dipole)
+        #print center_voxel_dipole, center_voxel_dipole
+        #print np.dot(center_voxel_dipole, center_voxel_dipole)
+        #print np.linalg.norm(center_voxel_dipole)**2
+        #print self.voxeldata[self.center_voxel]
+        rho_bulk = 0.0329
+        for k in self.voxeldata:
+            if k[4] >= 1.0: 
+                #print "will calculate dot prodct for %i and %i\n" % (k[0], self.center_voxel)
+                nbr_voxel_dipole = k[21:24]
+                nbr_voxel_dipole_norm = nbr_voxel_dipole/np.linalg.norm(nbr_voxel_dipole)
+                #print nbr_voxel_dipole, center_voxel_dipole
+                #print nbr_voxel_dipole_norm, center_voxel_dipole_norm
+                dp = np.dot(nbr_voxel_dipole_norm, center_voxel_dipole_norm)
+                #dp = np.dot(nbr_voxel_dipole, center_voxel_dipole)
+                #print dp, 
+                k[24] = dp*k[5]*rho_bulk
+                #print k[24]
 #*********************************************************************************************#
                     
     def writeGistData(self, outfile):
@@ -473,3 +515,97 @@ class Gist:
             f.write(l)
         f.close()
         
+#*********************************************************************************************#
+                    
+    def writeGistDipoleData(self, outfile):
+        f = open("gist_data_"+outfile+".txt", "w")
+        header_2 = "voxel x y z wat g_O dipolex dipoley dipolez dipole_dp\n"
+        f.write(header_2)
+        for k in self.voxeldata:
+            l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.3f \n" % \
+                (k[0], k[1], k[2], k[3], k[4], k[5],
+                 k[21], k[22], k[23], k[24])
+                #print l
+            f.write(l)
+        f.close()
+        
+#*********************************************************************************************#
+    def getMostProbableConfig(self, n_frame, res, logfile):
+        # set constants
+        gas_kcal = 0.0019872041
+        rho_bulk = 0.0334
+        voxel_vol = res**3
+        # initialize variables to store entropy results
+        dTStr_tot = 0.0
+        dTSor_tot = 0.0
+        total_mem = 0
+        print "Memory taken up for by rest of the grid in Kbs",  sys.getsizeof(self.voxeldata)/1000
+        #f_name = "most_probable_positive_wats.pdb"
+        center_voxel_coords = self.voxeldata[self.center_voxel][1:4]
+        
+        file_name_aligned = "aligned_wats.cms"
+        #file_name_misaligned = "misaligned_wats.cms"
+
+        writer_1 = StructureWriter(file_name_aligned)
+        writer_2 = StructureWriter(file_name_misaligned)
+        # begin iterating over voxels
+        new_res_num = 0
+        for k in self.voxeldict.keys():
+            # only for voxels with more than one water
+            #if self.voxeldata[k, 24] <= 0:
+            if self.voxeldata[k, 24] >= 0.1 or self.voxeldata[k, 24] <= -0.1:
+                dTStr_dens = -gas_kcal*300*rho_bulk*self.voxeldata[k, 5]*np.log(self.voxeldata[k, 5])
+                # voxel translational entropy density
+                self.voxeldata[k, 7] = dTStr_dens
+                # voxel translational entropy normalized
+                self.voxeldata[k, 8] = dTStr_dens*n_frame*voxel_vol/(1.0*self.voxeldata[k, 4])
+                # initialize array for storing translational and rotational coords for waters in this voxel
+                #print self.voxeldict[k][0]
+                #print self.voxeldict[k][1]
+                angle_array = np.asarray(self.voxeldict[k][0], dtype="float64")
+                #print angle_array
+                
+                total_mem += angle_array.nbytes
+                nearest_nbr_index = gistcalcs.getNNOr(int(self.voxeldata[k, 4]), angle_array)
+                nearest_nbr_wat_id = self.voxeldict[k][1][nearest_nbr_index][1]
+                nearest_nbr_wat_frame = self.voxeldict[k][1][nearest_nbr_index][0]
+                
+                #print self.voxeldict[k][1][nearest_nbr_index]
+                frame_st = self.dsim.getFrameStructure(int(nearest_nbr_wat_frame))
+                #print [nearest_nbr_wat_id, nearest_nbr_wat_id+1, nearest_nbr_wat_id+2]
+                wat_struct = frame_st.extract([nearest_nbr_wat_id, nearest_nbr_wat_id+1, nearest_nbr_wat_id+2])
+                for res in wat_struct.residue:
+                    res._setResnum(new_res_num)
+                    new_res_num += 1
+                if self.voxeldata[k, 24] >= 0.5:
+                    wat_struct.append(file_name_aligned)
+                if self.voxeldata[k, 24] <= -0.5:
+                    wat_struct.append(file_name_misaligned)
+
+                """
+                if dist <= 3.5:
+                    wat_struct.append(first_shell_file)
+                elif dist > 3.5 and dist <= 5.5:
+                    wat_struct.append(second_shell_file)
+                elif dist > 5.5 and dist <= 8.5:
+                    wat_struct.append(third_shell_file)
+                """
+                # voxel orientational entropy normalized
+                #self.voxeldata[k, 10] = gas_kcal*300*((dTSor_dens/self.voxeldata[k, 4]) + 0.5772)
+                # voxel orientational entropy density
+                #self.voxeldata[k, 9] = self.voxeldata[k, 10]*(self.voxeldata[k, 4]/(n_frame*voxel_vol))
+
+                #dTStr_tot += self.voxeldata[k, 7]
+                #dTSor_tot += self.voxeldata[k, 9]
+        writer_1.close()
+        writer_2.close()
+
+        """
+        dTStr_tot *= voxel_vol
+        dTSor_tot *= voxel_vol
+        logfile.write("Total Solute-Water Translational Entropy over the grid: %.8f\n" % dTStr_tot)
+        logfile.write("Total Solute-Water Orientational Entropy over the grid: %.8f\n" % dTSor_tot)
+        print "Total Solute-Water Orientational Entropy over the grid: %.8f" % dTSor_tot
+        print "Total Solute-Water Translational Entropy over the grid: %.8f" % dTStr_tot
+        print "Memory taken up by water euler angles Kbs", total_mem/1000
+        """

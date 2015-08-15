@@ -26,10 +26,10 @@ for l in data[1:]:
     #print int(l.strip("\n").split()[0])
 
 # obtain header for dx files
-dx_header = open(options.gist_log, "r").readlines()[2:9]
+dx_header = open(options.gist_log, "r").readlines()[1:9]
 #print dx_header
 for data_field, title in enumerate(data_keys):
-    if data_field in [5, 9]:# and data_field < 19:
+    if data_field > 8:# and data_field < 19:
         print data_field, title
       
         f = open(options.out_name+"_"+title+".dx",'w')
@@ -42,5 +42,5 @@ for data_field, title in enumerate(data_keys):
                 #print v_dict[l][1][2],
             #print
             f.write("\n")
-        #f.write("object 'occupancy (all)' class field\n")
+        f.write("object 'occupancy (all)' class field\n")
         f.close()

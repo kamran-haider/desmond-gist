@@ -23,7 +23,7 @@ __version__ = "$Revision: $ $Date: $"
   For a desmond installation of python 2.5 (change path up to desmond directory, rest should be the same):
   
   gcc -O3 -lm -fPIC -shared -I /home/kamran/desmond/mmshare-v24012/lib/Linux-x86_64/include/python2.7 -I /home/kamran/desmond/mmshare-v24012/lib/Linux-x86_64/lib/python2.7/site-packages/numpy/core/include/ -o _gistcalcs.so _gistcalcs.c
-  
+  gcc -O3 -lm -fPIC -shared -I /opt/schrodinger2014-2/mmshare-v26017/lib/Linux-x86_64/include/python2.7/ -I /opt/schrodinger2014-2/mmshare-v26017/lib/Linux-x86_64/lib/python2.7/site-packages/numpy/core/include/ -o _gistcalcs.so _gistcalcs.c
   For a default installation of python 2.5:
   
   gcc -O3 -lm -fPIC -shared -I/usr/local/include/python2.5 -I/usr/local/lib/python2.5/site-packages/numpy/core/include -o _gistcalcs.so _gistcalcs.c
@@ -169,6 +169,7 @@ void energy( double * ox, double * oy, double * oz,
     n_wat_O_atoms = PyArray_DIM(wat_O_ids, 0);
     // Begin E_sw calculations
     // iterate over all solute atoms
+    /*
     for (solute_at_i = 0; solute_at_i < n_solute_atoms; solute_at_i++){
         // iterate over each atomic interaction site for this water
         //printf("Solute atom with atomic index %i\n", solute_at_i);
@@ -187,7 +188,7 @@ void energy( double * ox, double * oy, double * oz,
     //printf("E_sw: %f\n", E_sw);
 
     // End E_sw calculations
-
+    */
     // Begin E_wat calculations
     // begin iterating over each solvent oxygen atom
     for (solvent_at_i = 0; solvent_at_i < n_wat_O_atoms ; solvent_at_i++){
@@ -308,6 +309,56 @@ void energy( double * ox, double * oy, double * oz,
 
     } // end energy calculation
 
+void dipole( double * ox, double * oy, double * oz,
+                PyArrayObject * wat_O_ids,
+                PyObject * all_coords,
+                PyArrayObject * all_charges,
+                PyArrayObject * voxel_data,
+                int w_id, int v_id){
+
+    // energy calculation is done in a separate function but for oxygen-oxygen pair, distance and energy are calculated within this
+    // function because of requirements for Enbr calculations
+    double *wx, *wy, *wz; // variables to store water atom's coordinates (only for H-atoms)
+    double *wc; // variables to store target water oxygen atom's non-bonded params (separately for O and H-atoms)
+    double *oc; // variables to store current water oxygen atom's non-bonded params (separately for O and H-atoms)
+    // following variables store info that helps retrieving pseudo interaction sites
+
+    int n_atomic_sites, n_pseudo_sites, wat_begin_id, pseudo_begin_id, oxygen_index, offset, offset2;
+    // following variables control looping over atoms
+    int n_solute_atoms, n_wat_O_atoms;
+    int wat_at_i, wat_ps_i, solute_at_i, solvent_at_i, solvent_ps_i;
+    int wat_h, solvent_h;
+    int * target_at;
+    // initialize energy values for this water molecule
+
+
+    double dipolar_vector[3];
+    dipolar_vector[0] = 0.0;
+    dipolar_vector[1] = 0.0;
+    dipolar_vector[2] = 0.0;
+
+
+    n_wat_O_atoms = PyArray_DIM(wat_O_ids, 0);
+    // Begin dipole calculations
+    // iterate over each atomic interaction site for this water
+    for (wat_at_i = w_id; wat_at_i < w_id+3; wat_at_i++){
+        //printf("Water atom index %i and global index %i\n", wat_at_i, wat_at_i - 1); // gid = w_id - 1 + wat_at_i - oxygen_index
+        wx = PyArray_GETPTR2(all_coords, wat_at_i - 1, 0); // obtain x, y, z
+        wy = PyArray_GETPTR2(all_coords, wat_at_i - 1, 1); 
+        wz = PyArray_GETPTR2(all_coords, wat_at_i - 1, 2); 
+        wc = PyArray_GETPTR1(all_charges, wat_at_i -1 ); // charge on this atom
+        //printf("Water atom ID x y z charge: %i %5.3f %5.3f %5.3f %5.3f\n", wat_at_i -1, *wx, *wy, *wz, *wc);
+        dipolar_vector[0] += ((*wc) * (*wx));
+        dipolar_vector[1] += ((*wc) * (*wy));
+        dipolar_vector[2] += ((*wc) * (*wz));
+        //printf("Water dipole x y z: %5.3f %5.3f %5.3f\n", dipolar_vector[0], dipolar_vector[1], dipolar_vector[2]);
+
+        }
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 21) += dipolar_vector[0];
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 22) += dipolar_vector[1];
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 23) += dipolar_vector[2];
+    }
+
 
 
 
@@ -337,6 +388,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     double wat_dist;
     int n_atomic_sites, n_pseudo_sites, wat_begin_id, pseudo_begin_id, oxygen_index;
 
+    // set some new variables for dipole stuff
     // Argument parsing to reterive everything sent from Python correctly    
     if (!PyArg_ParseTuple(args, "iiiOOO!O!O!O!O!O!O!O!O!O!O!:processGrid",
                             &frames, &start_frame, &num_atoms, &getCoords, &sendWatCoords,
@@ -401,6 +453,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
             wat_x = (double *)PyArray_GETPTR2(coords, *wat_id-1, 0);
             wat_y = (double *)PyArray_GETPTR2(coords, *wat_id-1, 1); 
             wat_z = (double *)PyArray_GETPTR2(coords, *wat_id-1, 2);
+
             //printf("water oxygen ID %i and coordinates %f %f %f\n", *wat_id, *wat_x, *wat_y, *wat_z);
             // check if the distance between wateer coordinates and grid origin is less than the max grid point
             // this means do calculations only waters inside the grid
@@ -419,7 +472,8 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                         // obtain the voxel ID for this water
                         voxel_id = ((int)grid_index_x*(int)*(double *)PyArray_GETPTR1(grid_dim, 1) + (int)grid_index_y)*(int)*(double *)PyArray_GETPTR1(grid_dim, 2) + (int)grid_index_z;
                         // Energy calculations
-                        energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, *wat_id, voxel_id);
+                        dipole(wat_x, wat_y, wat_z, wat_oxygen_ids, coords, charges, voxel_data, *wat_id, voxel_id);
+                        //energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, *wat_id, voxel_id);
                         //energy_ww(wat_x, wat_y, wat_z, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, *wat_id, voxel_id, n_wat);
                         // get hydrogen atom coords
                         h1x = (double *)PyArray_GETPTR2(coords, *wat_id, 0);
@@ -428,10 +482,12 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                         h2x = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 0);
                         h2y = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 1); 
                         h2z = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 2);
+                        //dipole calcs
                         //printf("Energy value for this voxel: %f\n",*(double *)PyArray_GETPTR2(voxel_data, voxel_id, 13));
                         //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
                         // send water x, y, z to python
-                        arglist_sendWatCoords = Py_BuildValue("(iddddddddd)", voxel_id, *wat_x, *wat_y, *wat_z, *h1x, *h1y, *h1z, *h2x, *h2y, *h2z);
+
+                        arglist_sendWatCoords = Py_BuildValue("(idddddddddii)", voxel_id, *wat_x, *wat_y, *wat_z, *h1x, *h1y, *h1z, *h2x, *h2y, *h2z, i_frames, *wat_id);
                         PyEval_CallObject(sendWatCoords, arglist_sendWatCoords);
                         //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
                         //printf("grid indices %f %f %f\n", grid_index_x, grid_index_y, grid_index_z);
@@ -452,6 +508,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                 }
             //printf("wat_id x y z max_x max_y max_z: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f \n", *wat_id, *wat_x, *wat_y, *wat_z, *grid_max_x, *grid_max_y, *grid_max_z);
             }
+        free(coords);
         //printf("waters inside grid! %i\n", frame_wat);
         }
     return Py_BuildValue("i", 1);
@@ -460,6 +517,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
 
 PyObject *_gistcalcs_getNNOr(PyObject *self, PyObject *args){
     int nwtot, n, l;
+    int nearest_nbr_index;
     double NNor, totR, dW, wat_or_ent;
     double voxel_dTSor = 0.0;
     double rx, ry, rz;
@@ -490,12 +548,15 @@ PyObject *_gistcalcs_getNNOr(PyObject *self, PyObject *args){
             //dR = 0.0;
             // get six-D distance
             // get translational nearest neighbor            
-            if (dW>0 && dW<NNor) NNor = dW;
+            if (dW>0 && dW<NNor) {
+                NNor = dW; 
+                nearest_nbr_index = l;
+            }
             // get six-D nearest neighbor            
         }
         //calculate translational entropy
         if (NNor<9999 && NNor>0) {
-            //printf("Nearest neighbour translational distance: %f\n", NNtr);
+            //printf("Nearest neighbour orientational distance: %f and corresponding index: %i\n", NNor, nearest_nbr_index);
             //wat_tr_ent = log(nwtot*NNtr*NNtr*NNtr/(3.0*twopi));
             //voxel_dTStr_norm += wat_tr_ent;
             wat_or_ent = log(nwtot*NNor*NNor*NNor/(3.0*twopi));
@@ -507,7 +568,8 @@ PyObject *_gistcalcs_getNNOr(PyObject *self, PyObject *args){
     }
     // 
     //*(double *)PyArray_GETPTR1(ent, 2) += voxel_dTSor_norm;
-    return Py_BuildValue("f", voxel_dTSor);
+    //return Py_BuildValue("f", voxel_dTSor);
+    return Py_BuildValue("i", nearest_nbr_index);
 
 }
 
