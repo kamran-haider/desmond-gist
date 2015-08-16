@@ -23,25 +23,30 @@ parser.add_option("-o", "--output", dest="outfile", type="string", help="Output 
 
 (options, args) = parser.parse_args()
 print "Setting up GIST calculations."
-lig = structure.StructureReader(options.ligand).next()
-gridcntr = sum(lig.getXYZ())/len(lig.atom)
+#lig = structure.StructureReader(options.ligand).next()
+#gridcntr = sum(lig.getXYZ())/len(lig.atom)
 ############################################################################
 # Edit this section for different systems
-gridspacn = [ 0.5, 0.5, 0.5 ]
+#gridspacn = [ 0.5, 0.5, 0.5 ]
 #gridcntr = np.array([13.95, 14.59, 15.08]) # dimensions
-griddim = [ 10, 10, 10 ]
+#griddim = [ 10, 10, 10 ]
+# jgough test
+gridspacn = [ 0.5, 0.5, 0.5 ]
+gridcntr = np.array([58.253, 42.705, 64.575]) 
+griddim = [ 28, 26, 44 ]
+
 ############################################################################
 g = Gist(options.cmsname, options.trjname, gridcntr, gridspacn, griddim)
 gist_logfile = open("desmond-gist-energy.log", "w") 
 gist_logfile.write("#Grid setup for the system in DX header format:\n")
-gist_logfile.write('# Data calculated by the VMD volmap function\n')
+#gist_logfile.write('# Data calculated by the VMD volmap function\n')
 gist_logfile.write('object 1 class gridpositions counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2])) 
 gist_logfile.write('origin %.1f %.1f %.1f\n' % (g.origin[0], g.origin[1], g.origin[2]))
 gist_logfile.write('delta %.1f 0 0\n' % (g.spacing[0]))
 gist_logfile.write('delta 0 %.1f 0\n' % (g.spacing[1]))
 gist_logfile.write('delta 0 0 %.1f\n' % (g.spacing[2]))
-gist_logfile.write('object 2 class gridconnections counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2]))
-gist_logfile.write('object 3 class array type double rank 0 items %d data follows\n' % (g.grid.shape[0]*g.grid.shape[1]*g.grid.shape[2]))
+#gist_logfile.write('object 2 class gridconnections counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2]))
+#gist_logfile.write('object 3 class array type double rank 0 items %d data follows\n' % (g.grid.shape[0]*g.grid.shape[1]*g.grid.shape[2]))
 gist_logfile.write("#EndHeader\n")
 print "Performing energy calculations ..."
 t = time.time()
@@ -50,7 +55,7 @@ print "energy calcs took seconds.", time.time() - t
 g.normalizeVoxelQuantities(options.frames, gist_logfile)
 t = time.time()
 #print "Performing entropy calculations ..."
-g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
+#g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
 #print "entropy calcs took seconds.", time.time() - t    
 g.writeGistData(options.outfile)
 gist_logfile.close()
