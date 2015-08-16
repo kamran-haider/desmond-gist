@@ -495,8 +495,8 @@ class Gist:
                 nbr_voxel_dipole_norm = nbr_voxel_dipole/np.linalg.norm(nbr_voxel_dipole)
                 #print nbr_voxel_dipole, center_voxel_dipole
                 #print nbr_voxel_dipole_norm, center_voxel_dipole_norm
-                dp = np.dot(nbr_voxel_dipole_norm, center_voxel_dipole_norm)
-                #dp = np.dot(nbr_voxel_dipole, center_voxel_dipole)
+                #dp = np.dot(nbr_voxel_dipole_norm, center_voxel_dipole_norm)
+                dp = np.dot(nbr_voxel_dipole, center_voxel_dipole)
                 #print dp, 
                 k[24] = dp*k[5]*rho_bulk
                 #print k[24]
