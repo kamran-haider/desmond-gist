@@ -147,8 +147,15 @@ void energy( double * ox, double * oy, double * oz,
     // initialize energy values for this water molecule
     double E_sw = 0.0;
     double E_ww = 0.0;
-    double E_nbr = 0.0;
-    int nbrs = 0;
+    double E_nbr_1 = 0.0;
+    double E_nbr_2 = 0.0;
+    double E_nbr_3 = 0.0;
+    double E_nbr_4 = 0.0;
+    int nbrs_1 = 0;
+    int nbrs_2 = 0;
+    int nbrs_3 = 0;
+    int nbrs_4 = 0;
+
     b_x = (double *) PyArray_GETPTR1(img_info, 0); 
     b_y = (double *) PyArray_GETPTR1(img_info, 1);
     b_z = (double *) PyArray_GETPTR1(img_info, 2);
@@ -283,28 +290,36 @@ void energy( double * ox, double * oy, double * oz,
         E_ww += E_wat;
 
         if (dist <= 3.5){
-            nbrs += 1;
-            E_nbr += E_wat;        
+            nbrs_1 += 1;
+            E_nbr_1 += E_wat;        
             }
-
+        elif (dist <= 5.5){
+            nbrs_2 += 1;
+            E_nbr_2 += E_wat;
+            } 
+        elif (dist <= 8.5){
+            nbrs_3 += 1;
+            E_nbr_3 += E_wat;
+            } 
+        else {
+            nbrs_4 += 1;
+            E_nbr_4 += E_wat;
+            }
         } // end iterating over each solvent oxygen atom
-
-        
-    //printf("Water %i, E_sw: %f, E_ww: %f, E_nbr_tot: %f, E_nbr_norm: %f, nbrs: %i\n", w_id-1, E_sw, E_ww/2.0, E_nbr/2.0, E_nbr/(nbrs*2.0), nbrs);
-
     *(double *)PyArray_GETPTR2(voxel_data, v_id, 14) += E_ww;
+
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 18) += nbrs_1;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 22) += nbrs_2;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 26) += nbrs_3;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 30) += nbrs_4;
+    //printf("Water %i, E_sw: %f, E_ww: %f, E_nbr_tot: %f, E_nbr_norm: %f, nbrs: %i\n", w_id-1, E_sw, E_ww/2.0, E_nbr/2.0, E_nbr/(nbrs*2.0), nbrs);
     // End E_ww calculations
 
     // sanity check on Enbr, if no nbrs found, E_nbr should be zero    
-    if (isnan(E_nbr/(nbrs*2.0))){
-        //printf("Water %i: E_tot: %f E_shell_tot: %f E_shell_norm: %f Nbrs: %i\n", w_id, E_tot/2.0, E_shell_tot/2.0, E_shell_tot/(wat_nbr*2.0), wat_nbr);
-        *(double *)PyArray_GETPTR2(voxel_data, v_id, 16) += 0;
-        *(double *)PyArray_GETPTR2(voxel_data, v_id, 18) += nbrs;
-        }
-    else {
-        *(double *)PyArray_GETPTR2(voxel_data, v_id, 16) += E_nbr/(nbrs*2.0);
-        *(double *)PyArray_GETPTR2(voxel_data, v_id, 18) += nbrs;
-        }
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 16) += E_nbr_1;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 20) += E_nbr_2;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 24) += E_nbr_3;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 28) += E_nbr_4;
 
 
     } // end energy calculation

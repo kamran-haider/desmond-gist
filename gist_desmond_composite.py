@@ -251,6 +251,9 @@ class Gist:
         voxel_dict = {}
         v_count = 0
         voxel_array = np.zeros((self.grid.size, 25), dtype="float64")
+        # 0: voxel id, 1: x, 2: y, 3: z, 4: nwat
+        # 5: gO, 6: gH, 7-10 entropies
+        # 
         center_voxel_id = 0
         min_dist = 100
         #print voxel_dict_new.shape
@@ -432,25 +435,55 @@ class Gist:
         nwat = 0
         for k in self.voxeldata:
             if k[4] >= 1.0:
-                
                 # number density of oxygen centers
                 voxel_dens = k[4]/(n_frame*voxel_vol)
                 k[5] = voxel_dens/rho_bulk
                 # number density of hydrogens
                 #k[6] = k[6]/(bulkwaterpervoxel*2)
                 # energy density-weighted and normalized
-                k[11] = k[12]/(n_frame*voxel_vol*2.0) # E_sw_dens
-                Eswtot += k[11]
-                k[12] = k[12]/k[4] # E_sw_norm
+                #k[11] = k[12]/(n_frame*voxel_vol*2.0) # E_sw_dens
+                #Eswtot += k[11]
+                #k[12] = k[12]/k[4] # E_sw_norm
                 k[13] = k[14]/(n_frame*voxel_vol*2.0) # E_ww_dens
-                Ewwtot += k[13]
+                #Ewwtot += k[13]
                 k[14] = k[14]/(k[4]*2.0) # E_ww_norm
-                # neighbours
-                k[17] = k[18]/(n_frame*voxel_vol) # nbr_dens
-                k[18] = k[18]/k[4] # nbr_norm
+                # first shell
+                # neighbours 
+                # For each shell, we ontain the total number of nbrs, which we normalize to get nbr norm
+                # and then get nbr dens, here should have tota
                 # E_nbr
+                # For each shell, we obtain the total energy with neighbors in that shell
+                # we normalized it by the number of neighbors to get per nbr energy
                 k[15] = k[16]/(n_frame*voxel_vol)
                 k[16] = k[16]/k[4]
+                k[17] = k[18]/(n_frame*voxel_vol) # nbr_dens
+                k[18] = k[18]/k[4] # nbr_norm
+                E_nbr_1_exptd_norm = (k[18]/5.255616)*-7.130345
+                E_nbr_1_exptd_dens = -7.130345/(n_frame*voxel_vol)
+                k[15] -= E_nbr_1_exptd_dens
+                k[16] -= E_nbr_1_exptd_norm
+                # second shell
+                k[19] = k[20]/(n_frame*voxel_vol)
+                k[20] = k[20]/k[4] # (L2/16.786315)*-1.372124
+                k[21] = k[22]/(n_frame*voxel_vol) # nbr_dens
+                k[22] = k[22]/k[4] # nbr_norm
+                E_nbr_2_exptd_norm = (k[22]/16.786315)*-1.372124
+                E_nbr_2_exptd_dens = -1.372124/(n_frame*voxel_vol)
+                k[19] -= E_nbr_2_exptd_dens
+                k[20] -= E_nbr_2_exptd_norm
+                # third shell
+                k[23] = k[24]/(n_frame*voxel_vol)
+                k[24] = k[24]/k[4] # (P2/61.513481)*-0.73469
+                k[25] = k[26]/(n_frame*voxel_vol) # nbr_dens
+                k[26] = k[26]/k[4] # nbr_norm
+                E_nbr_3_exptd_norm = (k[26]/61.513481)*-0.73469
+                E_nbr_3_exptd_dens = -0.73469/(n_frame*voxel_vol)
+                k[23] -= E_nbr_3_exptd_dens
+                k[24] -= E_nbr_3_exptd_norm
+
+
+
+                """
                 Ewwnbrtot += k[15]
                 enclosure = 1 - (k[18]/5.25)
                 if enclosure < 0.0:
@@ -467,13 +500,12 @@ class Gist:
                 #k[23] /= k[4]
                 #k[24] = 
                 #print k[21], k[22], k[23]
-
-                
-        Eswtot *= voxel_vol
-        Ewwtot *= voxel_vol
-        Ewwnbrtot *= voxel_vol
-        nwat *= voxel_vol
-        print "Total number of water molecules over the grid: ", nwat
+                """
+        #Eswtot *= voxel_vol
+        #Ewwtot *= voxel_vol
+        #Ewwnbrtot *= voxel_vol
+        #nwat *= voxel_vol
+        #print "Total number of water molecules over the grid: ", nwat
         #print "Total Solute-Water Energy over the grid: ", Eswtot
         #print "Total Water-Water Energy over the grid: ", Ewwtot
         #print "Total Water-Water Nbr Energy over the grid: ", Ewwnbrtot
@@ -504,13 +536,13 @@ class Gist:
                     
     def writeGistData(self, outfile):
         f = open("gist_data_"+outfile+".txt", "w")
-        header_2 = "voxel x y z wat g_O g_H dTStr-dens dTStr-norm dTSor-dens dTSor-norm Esw-dens Esw-norm Eww-dens Eww-norm Eww-nbr-dens Eww-nbr-norm nbr-dens nbr-norm enc-dens enc-norm\n"
+        header_2 = "voxel x y z wat g_O Eww-dens Eww-norm Eww-shell-1-dens Eww-shell-1-norm nbr-shell-1-dens nbr-shell-1-norm Eww-shell-2-dens Eww-shell-2-norm nbr-shell-2-dens nbr-shell-2-norm Eww-shell-3-dens Eww-shell-3-norm nbr-shell-3-dens nbr-shell-3-norm\n"
         f.write(header_2)
         for k in self.voxeldata:
-            l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f\n" % \
-                (k[0], k[1], k[2], k[3], k[4], k[5], k[6],
-                 k[7], k[8], k[9], k[10],
-                k[11], k[12], k[13], k[14], k[15], k[16], k[17], k[18], k[19], k[20])
+            l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f \n" % \
+                (k[0], k[1], k[2], k[3], k[4], k[5],
+                k[13], k[14], k[15], k[16], k[17], k[18], k[19], k[20]
+                k[21], k[22], k[23], k[24], k[25], k[26])
                 #print l
             f.write(l)
         f.close()

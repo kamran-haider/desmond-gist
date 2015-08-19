@@ -33,7 +33,7 @@ gridcntr = lig.getXYZ()[options.clust]
 # Edit this section for different systems
 gridspacn = [ 0.5, 0.5, 0.5 ]
 #gridcntr = np.array([13.95, 14.59, 15.08]) # dimensions
-griddim = [ 40, 40, 40 ]
+griddim = [ 20, 20, 20 ]
 
 ############################################################################
 g = Gist(options.cmsname, options.trjname, gridcntr, gridspacn, griddim)
@@ -53,14 +53,14 @@ t = time.time()
 g.getVoxelEnergies(options.frames, options.start_frame)
 print "energy calcs took seconds.", time.time() - t
 g.normalizeVoxelQuantities(options.frames, gist_logfile)
-g.getDipoleDotProduct()
+#g.getDipoleDotProduct()
 
 t = time.time()
 #print "Performing entropy calculations ..."
 #g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
 #print "entropy calcs took seconds.", time.time() - t    
-#g.writeGistData(options.outfile)
-g.writeGistDipoleData(options.outfile)
+g.writeGistData(options.outfile)
+#g.writeGistDipoleData(options.outfile)
 print "Getting most probable config ..."
 #g.getMostProbableConfig(options.frames, 0.5, gist_logfile)
 
