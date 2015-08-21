@@ -250,7 +250,7 @@ class Gist:
     def _initializeVoxelDict(self):
         voxel_dict = {}
         v_count = 0
-        voxel_array = np.zeros((self.grid.size, 25), dtype="float64")
+        voxel_array = np.zeros((self.grid.size, 27), dtype="float64")
         # 0: voxel id, 1: x, 2: y, 3: z, 4: nwat
         # 5: gO, 6: gH, 7-10 entropies
         # 
@@ -274,8 +274,8 @@ class Gist:
                 min_dist = dist
                 center_voxel_id = v_count
             v_count += 1
-        #print "central voxel id is: ", center_voxel_id
         self.center_voxel = center_voxel_id
+        print "central voxel id is: ", self.center_voxel
         return voxel_array, voxel_dict
 
 #*********************************************************************************************#
@@ -383,9 +383,7 @@ class Gist:
     def getVoxelEnergies(self, n_frame, s_frame):
         # testing new GIST module
         wat_index_info = np.array([self.n_atom_sites, self.n_pseudo_sites, self.wat_begin_gid, self.pseudo_begin_gid, self.oxygen_index], dtype="int")
-        gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata)
-
-
+        gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata, self.center_voxel)
 #*********************************************************************************************#
     def getVoxelEntropies(self, n_frame, res, logfile):
         # set constants
@@ -460,8 +458,8 @@ class Gist:
                 k[18] = k[18]/k[4] # nbr_norm
                 E_nbr_1_exptd_norm = (k[18]/5.255616)*-7.130345
                 E_nbr_1_exptd_dens = -7.130345/(n_frame*voxel_vol)
-                k[15] -= E_nbr_1_exptd_dens
-                k[16] -= E_nbr_1_exptd_norm
+                #k[15] -= E_nbr_1_exptd_dens
+                #k[16] -= E_nbr_1_exptd_norm
                 # second shell
                 k[19] = k[20]/(n_frame*voxel_vol)
                 k[20] = k[20]/k[4] # (L2/16.786315)*-1.372124
@@ -469,8 +467,8 @@ class Gist:
                 k[22] = k[22]/k[4] # nbr_norm
                 E_nbr_2_exptd_norm = (k[22]/16.786315)*-1.372124
                 E_nbr_2_exptd_dens = -1.372124/(n_frame*voxel_vol)
-                k[19] -= E_nbr_2_exptd_dens
-                k[20] -= E_nbr_2_exptd_norm
+                #k[19] -= E_nbr_2_exptd_dens
+                #k[20] -= E_nbr_2_exptd_norm
                 # third shell
                 k[23] = k[24]/(n_frame*voxel_vol)
                 k[24] = k[24]/k[4] # (P2/61.513481)*-0.73469
@@ -478,11 +476,8 @@ class Gist:
                 k[26] = k[26]/k[4] # nbr_norm
                 E_nbr_3_exptd_norm = (k[26]/61.513481)*-0.73469
                 E_nbr_3_exptd_dens = -0.73469/(n_frame*voxel_vol)
-                k[23] -= E_nbr_3_exptd_dens
-                k[24] -= E_nbr_3_exptd_norm
-
-
-
+                #k[23] -= E_nbr_3_exptd_dens
+                #k[24] -= E_nbr_3_exptd_norm
                 """
                 Ewwnbrtot += k[15]
                 enclosure = 1 - (k[18]/5.25)
@@ -541,7 +536,7 @@ class Gist:
         for k in self.voxeldata:
             l = "%i %.2f %.2f %.2f %i %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f %.8f \n" % \
                 (k[0], k[1], k[2], k[3], k[4], k[5],
-                k[13], k[14], k[15], k[16], k[17], k[18], k[19], k[20]
+                k[13], k[14], k[15], k[16], k[17], k[18], k[19], k[20], 
                 k[21], k[22], k[23], k[24], k[25], k[26])
                 #print l
             f.write(l)

@@ -29,7 +29,7 @@ for l in data[1:]:
 dx_header = open(options.gist_log, "r").readlines()[2:9]
 #print dx_header
 for data_field, title in enumerate(data_keys):
-    if data_field in [5, 9]:# and data_field < 19:
+    if data_field > 4:
         print data_field, title
       
         f = open(options.out_name+"_"+title+".dx",'w')

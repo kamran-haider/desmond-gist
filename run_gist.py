@@ -33,7 +33,7 @@ gridcntr = lig.getXYZ()[options.clust]
 # Edit this section for different systems
 gridspacn = [ 0.5, 0.5, 0.5 ]
 #gridcntr = np.array([13.95, 14.59, 15.08]) # dimensions
-griddim = [ 20, 20, 20 ]
+griddim = [ 40, 40, 40 ]
 
 ############################################################################
 g = Gist(options.cmsname, options.trjname, gridcntr, gridspacn, griddim)
@@ -61,7 +61,7 @@ t = time.time()
 #print "entropy calcs took seconds.", time.time() - t    
 g.writeGistData(options.outfile)
 #g.writeGistDipoleData(options.outfile)
-print "Getting most probable config ..."
+#print "Getting most probable config ..."
 #g.getMostProbableConfig(options.frames, 0.5, gist_logfile)
 
 

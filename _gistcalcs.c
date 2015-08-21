@@ -125,7 +125,7 @@ void energy( double * ox, double * oy, double * oz,
                 PyArrayObject * img_info,
                 PyArrayObject * voxel_data,
                 PyArrayObject * wat_info,
-                int w_id, int v_id){
+                int w_id, int target_w_id, int v_id){
 
     // energy calculation is done in a separate function but for oxygen-oxygen pair, distance and energy are calculated within this
     // function because of requirements for Enbr calculations
@@ -143,7 +143,7 @@ void energy( double * ox, double * oy, double * oz,
     int n_solute_atoms, n_wat_O_atoms;
     int wat_at_i, wat_ps_i, solute_at_i, solvent_at_i, solvent_ps_i;
     int wat_h, solvent_h;
-    int * target_at;
+    int target_at;
     // initialize energy values for this water molecule
     double E_sw = 0.0;
     double E_ww = 0.0;
@@ -198,19 +198,19 @@ void energy( double * ox, double * oy, double * oz,
     */
     // Begin E_wat calculations
     // begin iterating over each solvent oxygen atom
-    for (solvent_at_i = 0; solvent_at_i < n_wat_O_atoms ; solvent_at_i++){
+    //for (solvent_at_i = 0; solvent_at_i < n_wat_O_atoms ; solvent_at_i++){
 
         double E_wat = 0.0;
 
         // 1. Calculate distance and interaction energy of current water O-atom and target water O-atom
-        target_at = (int *) PyArray_GETPTR1(wat_O_ids, solvent_at_i); // get atom id
-        if (*target_at-1 == w_id-1) continue; // if global ids match, skip calculation
-        wx = PyArray_GETPTR2(all_coords, *target_at-1, 0); // obtain x, y, z using global id
-        wy = PyArray_GETPTR2(all_coords, *target_at-1, 1); 
-        wz = PyArray_GETPTR2(all_coords, *target_at-1, 2); 
-        w_c = PyArray_GETPTR1(all_charges, *target_at-1); // charge on this atom
-        w_sig = PyArray_GETPTR2(all_vdw, *target_at-1, 0);
-        w_eps = PyArray_GETPTR2(all_vdw, *target_at-1, 1);
+        target_at = target_w_id; // get atom id
+        //if (target_at-1 == w_id-1) continue; // if global ids match, skip calculation
+        wx = PyArray_GETPTR2(all_coords, target_at-1, 0); // obtain x, y, z using global id
+        wy = PyArray_GETPTR2(all_coords, target_at-1, 1); 
+        wz = PyArray_GETPTR2(all_coords, target_at-1, 2); 
+        w_c = PyArray_GETPTR1(all_charges, target_at-1); // charge on this atom
+        w_sig = PyArray_GETPTR2(all_vdw, target_at-1, 0);
+        w_eps = PyArray_GETPTR2(all_vdw, target_at-1, 1);
         // obtain non-bonded params for the current water O atom
         o_c = PyArray_GETPTR1(all_charges, w_id-1); // charge on this atom
         o_sig = PyArray_GETPTR2(all_vdw, w_id-1, 0);
@@ -237,11 +237,11 @@ void energy( double * ox, double * oy, double * oz,
         // begin iterating over current water's hydrogen atoms
         for (wat_h = w_id; wat_h <= w_id+1; wat_h++){
             //printf("target water's H atom ID: %i\n", solvent_h);
-            E_wat += calcEnergy(wat_h, *target_at-1, all_coords, all_charges, all_vdw, img_info);
+            E_wat += calcEnergy(wat_h, target_at-1, all_coords, all_charges, all_vdw, img_info);
             } // end iterating over current water's hydrogen atoms
         // 3. Iterate over target water's H-atoms to calculate interactions with current water's O-atom, H-atoms and pseudo-sites
         // begin iterating over target water's hydrogen atoms
-        for (solvent_h = *target_at; solvent_h <= *target_at+1; solvent_h++){
+        for (solvent_h = target_at; solvent_h <= target_at+1; solvent_h++){
             //printf("target water's H atom ID: %i\n", solvent_h);
             E_wat += calcEnergy(solvent_h, w_id-1, all_coords, all_charges, all_vdw, img_info);
             // begin iterating over current water's hydrogen atoms
@@ -261,12 +261,12 @@ void energy( double * ox, double * oy, double * oz,
         // begin iterating over each pseudo interaction site for current water 
         for (wat_ps_i = 0; wat_ps_i < n_pseudo_sites; wat_ps_i++){
             //printf("Current Water pseudo site %i with global index %i\n", wat_ps_i, pseudo_begin_id + offset*n_pseudo_sites + wat_ps_i); // gid = w_id - 1 + wat_at_i - oxygen_index
-            E_wat += calcEnergy(pseudo_begin_id + offset*n_pseudo_sites + wat_ps_i, *target_at-1, all_coords, all_charges, all_vdw, img_info);
+            E_wat += calcEnergy(pseudo_begin_id + offset*n_pseudo_sites + wat_ps_i, target_at-1, all_coords, all_charges, all_vdw, img_info);
             } // end iterating over each pseudo interaction site for current water
         
         // 5. Iterate over target water's pseudo sites to calculate interactions with current water's O-atom, H-atoms and pseudo sites
         // begin iterating over each pseudo interaction site for target water
-        offset2 = (*target_at - 1 - wat_begin_id)/n_atomic_sites;
+        offset2 = (target_at - 1 - wat_begin_id)/n_atomic_sites;
     
         for (solvent_ps_i = 0; solvent_ps_i < n_pseudo_sites; solvent_ps_i++){
             //printf("Target Water pseudo site %i with global index %i\n", solvent_ps_i, pseudo_begin_id + offset*n_pseudo_sites + solvent_ps_i); // gid = w_id - 1 + wat_at_i - oxygen_index
@@ -293,21 +293,16 @@ void energy( double * ox, double * oy, double * oz,
             nbrs_1 += 1;
             E_nbr_1 += E_wat;        
             }
-        elif (dist <= 5.5){
+        if (dist > 3.5 && dist <= 5.5){
             nbrs_2 += 1;
             E_nbr_2 += E_wat;
             } 
-        elif (dist <= 8.5){
+        if (dist > 5.5 && dist <= 8.5){
             nbrs_3 += 1;
             E_nbr_3 += E_wat;
             } 
-        else {
-            nbrs_4 += 1;
-            E_nbr_4 += E_wat;
-            }
-        } // end iterating over each solvent oxygen atom
+        //} // end iterating over each solvent oxygen atom
     *(double *)PyArray_GETPTR2(voxel_data, v_id, 14) += E_ww;
-
     *(double *)PyArray_GETPTR2(voxel_data, v_id, 18) += nbrs_1;
     *(double *)PyArray_GETPTR2(voxel_data, v_id, 22) += nbrs_2;
     *(double *)PyArray_GETPTR2(voxel_data, v_id, 26) += nbrs_3;
@@ -316,10 +311,10 @@ void energy( double * ox, double * oy, double * oz,
     // End E_ww calculations
 
     // sanity check on Enbr, if no nbrs found, E_nbr should be zero    
-    *(double *)PyArray_GETPTR2(voxel_data, v_id, 16) += E_nbr_1;
-    *(double *)PyArray_GETPTR2(voxel_data, v_id, 20) += E_nbr_2;
-    *(double *)PyArray_GETPTR2(voxel_data, v_id, 24) += E_nbr_3;
-    *(double *)PyArray_GETPTR2(voxel_data, v_id, 28) += E_nbr_4;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 16) += E_nbr_1*0.5;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 20) += E_nbr_2*0.5;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 24) += E_nbr_3*0.5;
+    *(double *)PyArray_GETPTR2(voxel_data, v_id, 28) += E_nbr_4*0.5;
 
 
     } // end energy calculation
@@ -375,12 +370,54 @@ void dipole( double * ox, double * oy, double * oz,
     }
 
 
+int getWaterVoxel( PyObject * coords, PyArrayObject * wat_oxygen_ids, PyArrayObject * grid_dim, double grid_max_x, double grid_max_y, double grid_max_z, 
+                    double grid_orig_x, double grid_orig_y, double grid_orig_z, int n_wat, int center_voxel)
+    {
+        double *wat_x, *wat_y, *wat_z;
+        double grid_index_x, grid_index_y, grid_index_z; 
+        int i_wat, voxel_id;
+        int target_wat_id = 0;
+        int * wat_id;
 
+
+        // Now we need to iterate over every water atom inside grid for its voxel assignment
+        for (i_wat = 0; i_wat < n_wat; i_wat ++) {
+            //target_wat_id = 0;
+            wat_id = (int *) PyArray_GETPTR1(wat_oxygen_ids, i_wat); // obtain index for this atom (this is not array index, this is unique atom id)
+            // use water ID to get the correct x, y, z coordinates from coord array
+            wat_x = (double *)PyArray_GETPTR2(coords, *wat_id-1, 0);
+            wat_y = (double *)PyArray_GETPTR2(coords, *wat_id-1, 1); 
+            wat_z = (double *)PyArray_GETPTR2(coords, *wat_id-1, 2);
+            if (*wat_x - grid_orig_x <= grid_max_x && *wat_y - grid_orig_y <= grid_max_y && *wat_z - grid_orig_z <= grid_max_z &&
+                *wat_x - grid_orig_x >= -1.5 && *wat_y - grid_orig_y >= -1.5 && *wat_z - grid_orig_z >= -1.5){
+                    //printf("water %i is inside the grid!\n", *wat_id);
+                if (*wat_x - grid_orig_x >= 0 && *wat_y - grid_orig_y >= 0 && *wat_z - grid_orig_z >= 0){
+                    // transform water coordinates in units of grid dimensions
+                    grid_index_x = (*wat_x - grid_orig_x)/0.5;
+                    grid_index_y = (*wat_y - grid_orig_y)/0.5;
+                    grid_index_z = (*wat_z - grid_orig_z)/0.5;
+                    // check if water coords (in grid dimensions) are less than grid dimensions in each direction
+                    if (grid_index_x < (int)*(double *)PyArray_GETPTR1(grid_dim, 0) &&
+                        grid_index_y < (int)*(double *)PyArray_GETPTR1(grid_dim, 1) &&
+                        grid_index_z < (int)*(double *)PyArray_GETPTR1(grid_dim, 2)){
+
+                        voxel_id = ((int)grid_index_x*(int)*(double *)PyArray_GETPTR1(grid_dim, 1) + (int)grid_index_y)*(int)*(double *)PyArray_GETPTR1(grid_dim, 2) + (int)grid_index_z;
+                        //printf("Water found in voxel %i, centeral voxel is: %i\n", voxel_id, center_voxel);
+                        if (voxel_id == center_voxel)
+                            //printf("Water corresponding to centeral voxel is: %i\n", *wat_id);
+                            target_wat_id = *wat_id;
+                            continue;
+                        }
+                    }
+                }
+        }
+        return target_wat_id;
+    }
 
 PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     {
     // variables reterived from python
-    int frames, start_frame, num_atoms; // total number of frames and atoms in the system
+    int frames, start_frame, num_atoms, center_voxel; // total number of frames and atoms in the system
     PyObject *getCoords, *arglist_getCoords; // python function, its argument tuple and variable to store its results
     PyObject *sendWatCoords, *arglist_sendWatCoords;// python function, its argument tuple and variable to store its results
     // Following variables are pointers to arrays that come from Python and contain various important pieces of info
@@ -399,13 +436,17 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     double grid_index_x, grid_index_y, grid_index_z; 
     double *wat_x, *wat_y, *wat_z;
     double *h1x, *h1y, *h1z, *h2x, *h2y, *h2z;
-    int *wat_id;
+    int *wat_id, *target_wat_id;
     double wat_dist;
     int n_atomic_sites, n_pseudo_sites, wat_begin_id, pseudo_begin_id, oxygen_index;
 
+    int wat;
+    int target_wat;
+    
+
     // set some new variables for dipole stuff
     // Argument parsing to reterive everything sent from Python correctly    
-    if (!PyArg_ParseTuple(args, "iiiOOO!O!O!O!O!O!O!O!O!O!O!:processGrid",
+    if (!PyArg_ParseTuple(args, "iiiOOO!O!O!O!O!O!O!O!O!O!O!i:processGrid",
                             &frames, &start_frame, &num_atoms, &getCoords, &sendWatCoords,
                             &PyArray_Type, &wat_index_info,
                             &PyArray_Type, &all_at_ids,
@@ -417,7 +458,8 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                             &PyArray_Type, &box,
                             &PyArray_Type, &grid_dim,
                             &PyArray_Type, &grid_orig,
-                            &PyArray_Type, &voxel_data))
+                            &PyArray_Type, &voxel_data,
+                            &center_voxel))
         {
             return NULL; /* raise argument parsing exception*/
         }
@@ -440,9 +482,9 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     grid_orig_x = *(double *)PyArray_GETPTR1(grid_orig, 0);
     grid_orig_y = *(double *)PyArray_GETPTR1(grid_orig, 1);
     grid_orig_z = *(double *)PyArray_GETPTR1(grid_orig, 2);
-    printf("grid origin: %f %f %f \n", grid_orig_x , grid_orig_y, grid_orig_z);
-    printf("grid max: %f %f %f \n", grid_max_x , grid_max_y, grid_max_z);
-    printf("grid dim: %i %i %i \n", (int)*(double *)PyArray_GETPTR1(grid_dim, 0), (int)*(double *)PyArray_GETPTR1(grid_dim, 1), (int)*(double *)PyArray_GETPTR1(grid_dim, 2));
+    //printf("grid origin: %f %f %f \n", grid_orig_x , grid_orig_y, grid_orig_z);
+    //printf("grid max: %f %f %f \n", grid_max_x , grid_max_y, grid_max_z);
+    //printf("grid dim: %i %i %i \n", (int)*(double *)PyArray_GETPTR1(grid_dim, 0), (int)*(double *)PyArray_GETPTR1(grid_dim, 1), (int)*(double *)PyArray_GETPTR1(grid_dim, 2));
 
     // Parse index information array
     n_atomic_sites = *(int *)PyArray_GETPTR1(wat_index_info, 0);
@@ -454,77 +496,57 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     //printf("nwat: %i \n", n_wat);
     
     for (i_frames = start_frame; i_frames < frames + start_frame; i_frames ++) {
+        target_wat = 0;
         printf("processing frame: %i\n", i_frames+1);
         // voxel_id initialized to zero (for each water it's voxel ID will be stored in this variable) 
         int voxel_id = 0;
         // for each frame get coordinates of every atom from python
         arglist_getCoords = Py_BuildValue("(i)", i_frames);
         coords = PyEval_CallObject(getCoords, arglist_getCoords);
-
+        target_wat = getWaterVoxel(coords, wat_oxygen_ids, grid_dim, grid_max_x, grid_max_y, grid_max_z, grid_orig_x, grid_orig_y, grid_orig_z, n_wat, center_voxel);
+        //printf("tagret water is %i\n", target_wat);
         // Now we need to iterate over every water atom inside grid for its voxel assignment
-        for (i_wat = 0; i_wat < n_wat; i_wat ++) {
-            wat_id = (int *) PyArray_GETPTR1(wat_oxygen_ids, i_wat); // obtain index for this atom (this is not array index, this is unique atom id)
-            // use water ID to get the correct x, y, z coordinates from coord array
-            wat_x = (double *)PyArray_GETPTR2(coords, *wat_id-1, 0);
-            wat_y = (double *)PyArray_GETPTR2(coords, *wat_id-1, 1); 
-            wat_z = (double *)PyArray_GETPTR2(coords, *wat_id-1, 2);
+        if (target_wat > 0)
+        {
+            for (i_wat = 0; i_wat < n_wat; i_wat ++) {
+                wat_id = (int *) PyArray_GETPTR1(wat_oxygen_ids, i_wat); // obtain index for this atom (this is not array index, this is unique atom id)
+                // use water ID to get the correct x, y, z coordinates from coord array
+                wat_x = (double *)PyArray_GETPTR2(coords, *wat_id-1, 0);
+                wat_y = (double *)PyArray_GETPTR2(coords, *wat_id-1, 1); 
+                wat_z = (double *)PyArray_GETPTR2(coords, *wat_id-1, 2);
 
-            //printf("water oxygen ID %i and coordinates %f %f %f\n", *wat_id, *wat_x, *wat_y, *wat_z);
-            // check if the distance between wateer coordinates and grid origin is less than the max grid point
-            // this means do calculations only waters inside the grid
-            if (*wat_x - grid_orig_x <= grid_max_x && *wat_y - grid_orig_y <= grid_max_y && *wat_z - grid_orig_z <= grid_max_z &&
-                *wat_x - grid_orig_x >= -1.5 && *wat_y - grid_orig_y >= -1.5 && *wat_z - grid_orig_z >= -1.5){
-                    //printf("water %i is inside the grid!\n", *wat_id);
-                if (*wat_x - grid_orig_x >= 0 && *wat_y - grid_orig_y >= 0 && *wat_z - grid_orig_z >= 0){
-                    // transform water coordinates in units of grid dimensions
-                    grid_index_x = (*wat_x - grid_orig_x)/0.5;
-                    grid_index_y = (*wat_y - grid_orig_y)/0.5;
-                    grid_index_z = (*wat_z - grid_orig_z)/0.5;
-                    // check if water coords (in grid dimensions) are less than grid dimensions in each direction
-                    if (grid_index_x < (int)*(double *)PyArray_GETPTR1(grid_dim, 0) &&
-                        grid_index_y < (int)*(double *)PyArray_GETPTR1(grid_dim, 1) &&
-                        grid_index_z < (int)*(double *)PyArray_GETPTR1(grid_dim, 2)){
-                        // obtain the voxel ID for this water
-                        voxel_id = ((int)grid_index_x*(int)*(double *)PyArray_GETPTR1(grid_dim, 1) + (int)grid_index_y)*(int)*(double *)PyArray_GETPTR1(grid_dim, 2) + (int)grid_index_z;
-                        // Energy calculations
-                        dipole(wat_x, wat_y, wat_z, wat_oxygen_ids, coords, charges, voxel_data, *wat_id, voxel_id);
-                        //energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, *wat_id, voxel_id);
-                        //energy_ww(wat_x, wat_y, wat_z, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, *wat_id, voxel_id, n_wat);
-                        // get hydrogen atom coords
-                        h1x = (double *)PyArray_GETPTR2(coords, *wat_id, 0);
-                        h1y = (double *)PyArray_GETPTR2(coords, *wat_id, 1); 
-                        h1z = (double *)PyArray_GETPTR2(coords, *wat_id, 2);
-                        h2x = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 0);
-                        h2y = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 1); 
-                        h2z = (double *)PyArray_GETPTR2(coords, *wat_id + 1, 2);
-                        //dipole calcs
-                        //printf("Energy value for this voxel: %f\n",*(double *)PyArray_GETPTR2(voxel_data, voxel_id, 13));
-                        //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
-                        // send water x, y, z to python
-
-                        arglist_sendWatCoords = Py_BuildValue("(idddddddddii)", voxel_id, *wat_x, *wat_y, *wat_z, *h1x, *h1y, *h1z, *h2x, *h2y, *h2z, i_frames, *wat_id);
-                        PyEval_CallObject(sendWatCoords, arglist_sendWatCoords);
-                        //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
-                        //printf("grid indices %f %f %f\n", grid_index_x, grid_index_y, grid_index_z);
-                        //printf("grid indices %i %i %i\n", (int)grid_index_x, (int)grid_index_y, (int)grid_index_z);
-                        //printf("(%i*%i + %i)*%i + %i = ", (int)grid_index_x, (int)*(double *)PyArray_GETPTR1(grid_dim, 1), (int)grid_index_y, (int)*(double *)PyArray_GETPTR1(grid_dim, 2), (int)grid_index_z);
-                        //printf("voxel id: %i\n", voxel_id);
-                        // Once voxel id is obtained, it is used to reterieve various properties of the voxel and modify them based
-                        // based on the calculations. Here, we reterive voxel water population and raise it by 1
-                        *(double *)PyArray_GETPTR2(voxel_data, voxel_id, 4) += 1.0;
-                        // insert code here that assigns hydrogens correctly
-                        *(double *)PyArray_GETPTR2(voxel_data, voxel_id, 6) += 2.0;
-                        //*(int *) PyArray_GETPTR2(voxel_data, voxel_id, 3) += 1.0;
-                        // 
-                        //printf("voxel id: %i\n", voxel_id);
-                        
+                //printf("water oxygen ID %i and coordinates %f %f %f\n", *wat_id, *wat_x, *wat_y, *wat_z);
+                // check if the distance between wateer coordinates and grid origin is less than the max grid point
+                // this means do calculations only waters inside the grid
+                if (*wat_x - grid_orig_x <= grid_max_x && *wat_y - grid_orig_y <= grid_max_y && *wat_z - grid_orig_z <= grid_max_z &&
+                    *wat_x - grid_orig_x >= -1.5 && *wat_y - grid_orig_y >= -1.5 && *wat_z - grid_orig_z >= -1.5){
+                        //printf("water %i is inside the grid!\n", *wat_id);
+                    if (*wat_x - grid_orig_x >= 0 && *wat_y - grid_orig_y >= 0 && *wat_z - grid_orig_z >= 0){
+                        // transform water coordinates in units of grid dimensions
+                        grid_index_x = (*wat_x - grid_orig_x)/0.5;
+                        grid_index_y = (*wat_y - grid_orig_y)/0.5;
+                        grid_index_z = (*wat_z - grid_orig_z)/0.5;
+                        // check if water coords (in grid dimensions) are less than grid dimensions in each direction
+                        if (grid_index_x < (int)*(double *)PyArray_GETPTR1(grid_dim, 0) &&
+                            grid_index_y < (int)*(double *)PyArray_GETPTR1(grid_dim, 1) &&
+                            grid_index_z < (int)*(double *)PyArray_GETPTR1(grid_dim, 2)){
+                            // obtain the voxel ID for this water
+                            voxel_id = ((int)grid_index_x*(int)*(double *)PyArray_GETPTR1(grid_dim, 1) + (int)grid_index_y)*(int)*(double *)PyArray_GETPTR1(grid_dim, 2) + (int)grid_index_z;
+                            //printf("Calculating energy for water %i with water %i\n", target_wat, *wat_id);
+                            energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, *wat_id, target_wat, voxel_id);
+                            *(double *)PyArray_GETPTR2(voxel_data, voxel_id, 4) += 1.0;
+                            // insert code here that assigns hydrogens correctly
+                            *(double *)PyArray_GETPTR2(voxel_data, voxel_id, 6) += 2.0;
+                            //*(int *) PyArray_GETPTR2(voxel_data, voxel_id, 3) += 1.0;
+                            // 
+                            //printf("voxel id: %i\n", voxel_id);
+                            
+                            }
                         }
                     }
+                //printf("wat_id x y z max_x max_y max_z: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f \n", *wat_id, *wat_x, *wat_y, *wat_z, *grid_max_x, *grid_max_y, *grid_max_z);
                 }
-            //printf("wat_id x y z max_x max_y max_z: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f \n", *wat_id, *wat_x, *wat_y, *wat_z, *grid_max_x, *grid_max_y, *grid_max_z);
             }
-        free(coords);
-        //printf("waters inside grid! %i\n", frame_wat);
         }
     return Py_BuildValue("i", 1);
     
