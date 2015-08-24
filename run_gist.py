@@ -61,7 +61,7 @@ t = time.time()
 #print "entropy calcs took seconds.", time.time() - t    
 #g.writeGistData(options.outfile)
 g.writeGistDipoleData(options.outfile)
-print "Getting most probable config ..."
+#print "Getting most probable config ..."
 #g.getMostProbableConfig(options.frames, 0.5, gist_logfile)
 
 

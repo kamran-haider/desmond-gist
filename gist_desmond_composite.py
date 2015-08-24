@@ -487,7 +487,7 @@ class Gist:
         #print np.dot(center_voxel_dipole, center_voxel_dipole)
         #print np.linalg.norm(center_voxel_dipole)**2
         #print self.voxeldata[self.center_voxel]
-        rho_bulk = 0.0329
+        rho_bulk = 0.0334
         for k in self.voxeldata:
             if k[4] >= 1.0: 
                 #print "will calculate dot prodct for %i and %i\n" % (k[0], self.center_voxel)
@@ -495,10 +495,11 @@ class Gist:
                 nbr_voxel_dipole_norm = nbr_voxel_dipole/np.linalg.norm(nbr_voxel_dipole)
                 #print nbr_voxel_dipole, center_voxel_dipole
                 #print nbr_voxel_dipole_norm, center_voxel_dipole_norm
-                #dp = np.dot(nbr_voxel_dipole_norm, center_voxel_dipole_norm)
-                dp = np.dot(nbr_voxel_dipole, center_voxel_dipole)
+                dp = np.dot(nbr_voxel_dipole_norm, center_voxel_dipole_norm)
+                #dp = np.dot(nbr_voxel_dipole, center_voxel_dipole)
                 #print dp, 
-                k[24] = dp*k[5]*rho_bulk
+                #k[24] = dp*k[5]*rho_bulk + 10
+                k[24] = dp
                 #print k[24]
 #*********************************************************************************************#
                     

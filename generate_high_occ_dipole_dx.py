@@ -28,11 +28,11 @@ parser.add_option("-o", "--output_prefix", dest="out_name", type="string", help=
 
 lig = structure.StructureReader(options.clust_center_file).next()
 clust_cntr = lig.getXYZ()[options.clust]
-
+clust_cntr = np.asarray([-9.24, -4.42, -5.32])
 
 check_datafield = 4
 dx_datafield = 8
-cutoff = 0.0
+cutoff = 1.0
 # obtain head for dx files
 dx_header = open(options.gist_log, "r").readlines()[1:9]
 #print dx_header
@@ -69,11 +69,12 @@ for i in range(0, len(voxeldata.keys()), 3):
     for l in key_sublist:
         point = np.asarray(voxeldata[l][0:3])
         dist = np.linalg.norm(clust_cntr-point)
-        #if voxeldata[l][check_datafield] >= cutoff and dist <= 3.5:
-        #if voxeldata[l][check_datafield] >= cutoff and dist > 3.5 and dist <= 5.5:
-        if voxeldata[l][check_datafield] >= cutoff and dist > 5.5 and dist <= 8.5:
+        #if voxeldata[l][check_datafield] >= cutoff and dist <= 3.5 and dist > 1.5 and voxeldata[l][dx_datafield] <= 0.5:
+        if voxeldata[l][check_datafield] >= cutoff and dist > 3.5 and dist <= 5.5 and voxeldata[l][dx_datafield] <= 0.5:
+        #if voxeldata[l][check_datafield] >= cutoff and dist > 5.5 and dist <= 8.5:
             #print point
-            f.write("%0.8f " % voxeldata[l][dx_datafield]) # access relevant value for this voxel
+            #f.write("%0.8f " % voxeldata[l][dx_datafield]) # access relevant value for this voxel
+            f.write("%0.1f " % 1.0) # access relevant value for this voxel
         else:
             f.write("%0.1f " % 0.0) # access relevant value for this voxel
     f.write("\n")
