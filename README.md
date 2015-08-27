@@ -10,4 +10,5 @@ gcc -O3 -lm -fPIC -shared -I path_to_desmond/desmond/mmshare-v24012/lib/Linux-x8
 The compilation instructions are provided in the C module 
 The main script _run\_gist.py_ should be run using $SCHRODINGER/run as it requires Schrodinger Python API. Type _$SCHRODINGER/run run\_gist.py_ --help_ for on the command line options required to run a gist calculation.
 ##Usage
+For a general introduction to running GIST calculations, please visit: http://ambermd.org/tutorials/advanced/tutorial25/
 Further details can be found in gist_tutorial.pdf. 
