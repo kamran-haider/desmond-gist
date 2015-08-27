@@ -271,7 +271,7 @@ class Gist:
                 min_dist = dist
                 center_voxel_id = v_count
             v_count += 1
-        #print "central voxel id is: ", center_voxel_id
+        print "central voxel id is: ", center_voxel_id
         self.center_voxel = center_voxel_id
         return voxel_array, voxel_dict
 

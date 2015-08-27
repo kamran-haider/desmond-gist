@@ -24,15 +24,15 @@ parser.add_option("-o", "--output", dest="outfile", type="string", help="Output 
 
 (options, args) = parser.parse_args()
 print "Setting up GIST calculations."
-lig = structure.StructureReader(options.clust_center_file).next()
+#lig = structure.StructureReader(options.clust_center_file).next()
 
 #gridcntr = sum(lig.getXYZ())/len(lig.atom)
-gridcntr = lig.getXYZ()[options.clust]
+#gridcntr = lig.getXYZ()[options.clust]
 #print gridcntr
 ############################################################################
 # Edit this section for different systems
 gridspacn = [ 0.5, 0.5, 0.5 ]
-#gridcntr = np.array([13.95, 14.59, 15.08]) # dimensions
+gridcntr = np.array([-5.93, 7.33, 7.45]) # dimensions
 griddim = [ 40, 40, 40 ]
 
 ############################################################################
