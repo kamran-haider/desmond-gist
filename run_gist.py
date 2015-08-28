@@ -45,8 +45,8 @@ gist_logfile.write('origin %.1f %.1f %.1f\n' % (g.origin[0], g.origin[1], g.orig
 gist_logfile.write('delta %.1f 0 0\n' % (g.spacing[0]))
 gist_logfile.write('delta 0 %.1f 0\n' % (g.spacing[1]))
 gist_logfile.write('delta 0 0 %.1f\n' % (g.spacing[2]))
-#gist_logfile.write('object 2 class gridconnections counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2]))
-#gist_logfile.write('object 3 class array type double rank 0 items %d data follows\n' % (g.grid.shape[0]*g.grid.shape[1]*g.grid.shape[2]))
+gist_logfile.write('object 2 class gridconnections counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2]))
+gist_logfile.write('object 3 class array type double rank 0 items %d data follows\n' % (g.grid.shape[0]*g.grid.shape[1]*g.grid.shape[2]))
 gist_logfile.write("#EndHeader\n")
 print "Performing energy calculations ..."
 t = time.time()
