@@ -9,7 +9,8 @@ gcc -O3 -lm -fPIC -shared -I path_to_desmond/desmond/mmshare-v24012/lib/Linux-x8
 
 please change path up to the location of desmond directory on your local machine, rest should be the same.
 More examples of compilation commands are provided in the C file.
-Once the C module is compiled, you can perform gist calculations using the script _run\_gist.py_. Please note that you should run this script using using $SCHRODINGER/run as it requires Schrodinger Python API. Type _$SCHRODINGER/run run\_gist.py_ --help_ for on the command line options required to run a gist calculation.
+Once the C module is compiled, you can perform gist calculations using the script _run\_gist.py_. Please note that you should run this script using using $SCHRODINGER/run as it requires Schrodinger Python API. Type _$SCHRODINGER/run run\_gist.py_ --help for the command line options required to run a gist calculation.
+
 ##Usage
 For a general introduction to running GIST calculations, please visit: http://ambermd.org/tutorials/advanced/tutorial25/
 
