@@ -413,7 +413,7 @@ class Gist:
 
     def normalizeVoxelQuantities(self, n_frame, logfile):
         voxel_vol = 0.5**3
-        rho_bulk = 0.0329
+        rho_bulk = 0.0334
         bulkwaterpervoxel = voxel_vol*rho_bulk*n_frame
         Eswtot = 0
         Ewwtot = 0
