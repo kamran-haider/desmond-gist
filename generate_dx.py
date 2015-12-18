@@ -26,8 +26,11 @@ for l in data[1:]:
     #print int(l.strip("\n").split()[0])
 
 # obtain header for dx files
-dx_header = open(options.gist_log, "r").readlines()[1:9]
+dx_header = open(options.gist_log, "r").readlines()[1:8]
+
+dx_file_objects = []
 #print dx_header
+"""
 for data_field, title in enumerate(data_keys):
     if data_field > 3:# and data_field < 19:
         print data_field, title
@@ -42,5 +45,39 @@ for data_field, title in enumerate(data_keys):
                 #print v_dict[l][1][2],
             #print
             f.write("\n")
-        f.write("object 'occupancy (all)' class field\n")
+        #f.write("object 'occupancy (all)' class field\n")
+        f.close()
+"""
+for data_field, title in enumerate(data_keys):
+    #if data_field > 4:# and data_field < 6:
+    #print "Writing dx file for: ", title
+    if data_field > 4:
+        f = open(options.out_name+"_"+title+".dx",'w')
+        for line in dx_header:
+            f.write(line)
+        dx_file_objects.append(f)
+    else:
+        dx_file_objects.append(None)
+
+#for column_i in xrange(5, len(data_keys)):
+#    print column_i, dx_file_objects[column_i]
+#    print voxeldata[0][column_i]
+
+
+for k in xrange(0, len(voxeldata)):
+    #print "writing data for voxel: ", k
+    if voxeldata[k][4] > 1.0:
+        for column_i in xrange(5, len(data_keys) - 1):
+            #print column_i, dx_file_objects[column_i], voxeldata[k][column_i]
+            dx_file_objects[column_i].write("%0.6f " % (voxeldata[k][column_i]))
+            if k % 3 == 0:
+                dx_file_objects[column_i].write("\n")
+    else:
+        for column_i in xrange(5, len(data_keys) - 1):
+            dx_file_objects[column_i].write("%i " % (voxeldata[k][column_i]))
+            if k % 3 == 0:
+                dx_file_objects[column_i].write("\n")
+
+for f in dx_file_objects:
+    if f != None:
         f.close()
