@@ -368,7 +368,15 @@ class Gist:
     def getVoxelEnergies(self, n_frame, s_frame):
         # testing new GIST module
         wat_index_info = np.array([self.n_atom_sites, self.n_pseudo_sites, self.wat_begin_gid, self.pseudo_begin_gid, self.oxygen_index], dtype="int")
-        gistcalcs.processGrid(n_frame, s_frame, len(self.all_atom_ids), self.sendCoords, self.getvoxelWatCoords, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata)
+
+        for i in xrange(s_frame, s_frame + n_frame):
+            print "Processing frame: ", i+1, "..."
+            # get frame structure, position array
+            frame = self.dsim.getFrame(i)
+            #measure_manager = PBCMeasureMananger(frame)
+            frame_st = self.dsim.getFrameStructure(i)
+            pos = frame.position
+            gistcalcs.processGrid(len(self.all_atom_ids), self.getvoxelWatCoords, pos, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata)
 
 #*********************************************************************************************#
     def getVoxelEntropies(self, n_frame, res, logfile):
