@@ -38,21 +38,29 @@ __version__ = "$Revision: $ $Date: $"
 #include <stdio.h>
 #include <stdlib.h>
 
-double dist_mic(double x1, double x2, double x3, double y1, double y2, double y3, double b1, double b2, double b3) {
+double dist_mic(double* x1, double* x2, double* x3, double* y1, double* y2, double* y3, double* b1, double* b2, double* b3) {
     /* Method for obtaining inter atom distance using minimum image convention
      */
     double dx, dy, dz;
-    dx = x1-y1;
-    dy = x2-y2;
-    dz = x3-y3;
-    if (dx > b1/2.0) dx -= b1; 
-    else if (dx < -b1/2.0) dx += b1; 
-    if (dy > b2/2.0) dy -= b2;
-    else if (dy < -b2/2.0) dy += b2;
-    if (dz > b3/2.0) dz -= b3; 
-    else if (dz < -b3/2.0) dz += b3;
-
+    dx = *x1 - *y1;
+    dy = *x2 - *y2;
+    dz = *x3 - *y3;
+    if (dx > *b1/2.0) dx -= *b1; 
+    else if (dx < -*b1/2.0) dx += *b1; 
+    if (dy > *b2/2.0) dy -= *b2;
+    else if (dy < -*b2/2.0) dy += *b2;
+    if (dz > *b3/2.0) dz -= *b3; 
+    else if (dz < -*b3/2.0) dz += *b3;
     return sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+    free(x1);
+    free(x2);
+    free(x3);
+    free(y1);
+    free(y2);
+    free(y3);
+    free(b1);
+    free(b2);
+    free(b3);
     }
     
 double dist(double x1, double x2, double x3, double y1, double y2, double y3) {
@@ -99,7 +107,7 @@ double calcEnergy(int at1, int at2,
     at2eps = PyArray_GETPTR2(vdw, at2, 1);
     //printf("solute atom ID x y z charge sig eps: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f\n", at2, *at2x, *at2y, *at2z, *at2c, *at2sig, *at2eps);
     // we first calculate water molecule's oxygen non-bonded interactions (both vdw and elec) with every solute atom
-    dist = dist_mic(*at1x, *at1y, *at1z, *at2x, *at2y, *at2z, *b_x, *b_y, *b_z); // distance (based on minimum image convention)
+    dist = dist_mic(at1x, at1y, at1z, at2x, at2y, at2z, b_x, b_y, b_z); // distance (based on minimum image convention)
     // Coulombic interaction calculation
     Elec = ((*at1c)*(*at2c))/dist; 
     //printf("Energy: %f\n", *(double *)PyArray_GETPTR2(voxel_data, v_id, 12));
@@ -125,7 +133,7 @@ void energy( double * ox, double * oy, double * oz,
                 PyArrayObject * img_info,
                 PyArrayObject * voxel_data,
                 PyArrayObject * wat_info,
-                int w_id, int v_id){
+                int * w_id, int v_id){
 
     // energy calculation is done in a separate function but for oxygen-oxygen pair, distance and energy are calculated within this
     // function because of requirements for Enbr calculations
@@ -158,7 +166,7 @@ void energy( double * ox, double * oy, double * oz,
     wat_begin_id = *(int *)PyArray_GETPTR1(wat_info, 2);
     pseudo_begin_id = *(int *)PyArray_GETPTR1(wat_info, 3);
     oxygen_index = *(int *)PyArray_GETPTR1(wat_info, 4);
-    offset = (w_id - 1 - wat_begin_id)/n_atomic_sites;
+    offset = (*w_id - 1 - wat_begin_id)/n_atomic_sites;
     //printf("Number of atom sites: %i\n", n_atomic_sites);
     //printf("Number of pseudo sites: %i\n", n_pseudo_sites);
     //printf("Water atom site start ID: %i\n", wat_begin_id);
@@ -174,12 +182,12 @@ void energy( double * ox, double * oy, double * oz,
         //printf("Solute atom with atomic index %i\n", solute_at_i);
         for (wat_at_i = 0; wat_at_i < n_atomic_sites; wat_at_i++){
             //printf("Water atom site %i with atomic index %i and global index %i\n", wat_at_i, w_id, w_id - 1); // gid = w_id - 1 + wat_at_i - oxygen_index
-            E_sw += calcEnergy(w_id - 1 + wat_at_i, solute_at_i, all_coords, all_charges, all_vdw, img_info);
+            E_sw += calcEnergy(*w_id - 1 + wat_at_i, solute_at_i, all_coords, all_charges, all_vdw, img_info);
             }
         // iterate over each pseudo interaction site for this water
         for (wat_ps_i = 0; wat_ps_i < n_pseudo_sites; wat_ps_i++){
             //printf("Water pseudo site %i with global index %i\n", wat_ps_i, pseudo_begin_id + offset*n_pseudo_sites + wat_ps_i); // gid = w_id - 1 + wat_at_i - oxygen_index
-            offset = (w_id - 1 - wat_begin_id)/n_atomic_sites;
+            offset = (*w_id - 1 - wat_begin_id)/n_atomic_sites;
             E_sw += calcEnergy(pseudo_begin_id + offset*n_pseudo_sites + wat_ps_i, solute_at_i, all_coords, all_charges, all_vdw, img_info);
             }
         }
@@ -196,7 +204,7 @@ void energy( double * ox, double * oy, double * oz,
 
         // 1. Calculate distance and interaction energy of current water O-atom and target water O-atom
         target_at = (int *) PyArray_GETPTR1(wat_O_ids, solvent_at_i); // get atom id
-        if (*target_at-1 == w_id-1) continue; // if global ids match, skip calculation
+        if (*target_at-1 == *w_id-1) continue; // if global ids match, skip calculation
         wx = PyArray_GETPTR2(all_coords, *target_at-1, 0); // obtain x, y, z using global id
         wy = PyArray_GETPTR2(all_coords, *target_at-1, 1); 
         wz = PyArray_GETPTR2(all_coords, *target_at-1, 2); 
@@ -204,14 +212,14 @@ void energy( double * ox, double * oy, double * oz,
         w_sig = PyArray_GETPTR2(all_vdw, *target_at-1, 0);
         w_eps = PyArray_GETPTR2(all_vdw, *target_at-1, 1);
         // obtain non-bonded params for the current water O atom
-        o_c = PyArray_GETPTR1(all_charges, w_id-1); // charge on this atom
-        o_sig = PyArray_GETPTR2(all_vdw, w_id-1, 0);
-        o_eps = PyArray_GETPTR2(all_vdw, w_id-1, 1);
+        o_c = PyArray_GETPTR1(all_charges, *w_id-1); // charge on this atom
+        o_sig = PyArray_GETPTR2(all_vdw, *w_id-1, 0);
+        o_eps = PyArray_GETPTR2(all_vdw, *w_id-1, 1);
 
         //printf("target water O atom ID x y z charge sig eps: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f\n", *target_at-1, *wx, *wy, *wz, *w_c, *w_sig, *w_eps);
         //printf("current water O atom ID x y z charge sig eps: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f\n", w_id-1, *ox, *oy, *oz, *o_c, *o_sig, *o_eps);
         
-        dist = dist_mic(*ox, *oy, *oz, *wx, *wy, *wz, *b_x, *b_y, *b_z); // distance (based on minimum image convention)
+        dist = dist_mic(ox, oy, oz, wx, wy, wz, b_x, b_y, b_z); // distance (based on minimum image convention)
         // Coulombic interaction calculation
         E_wat += ((*o_c)*(*w_c))/dist; 
         //printf("electrostatics: %f for charges %f and %f at distance %f\n", ((*o_c)*(*w_c))/dist, *o_c, *w_c);
@@ -227,7 +235,7 @@ void energy( double * ox, double * oy, double * oz,
 
         // 2. Iterate over H-atoms of current water to calculate energy between target water's O-atom & current water's H-atoms
         // begin iterating over current water's hydrogen atoms
-        for (wat_h = w_id; wat_h <= w_id+1; wat_h++){
+        for (wat_h = *w_id; wat_h <= *w_id+1; wat_h++){
             //printf("target water's H atom ID: %i\n", solvent_h);
             E_wat += calcEnergy(wat_h, *target_at-1, all_coords, all_charges, all_vdw, img_info);
             } // end iterating over current water's hydrogen atoms
@@ -235,9 +243,9 @@ void energy( double * ox, double * oy, double * oz,
         // begin iterating over target water's hydrogen atoms
         for (solvent_h = *target_at; solvent_h <= *target_at+1; solvent_h++){
             //printf("target water's H atom ID: %i\n", solvent_h);
-            E_wat += calcEnergy(solvent_h, w_id-1, all_coords, all_charges, all_vdw, img_info);
+            E_wat += calcEnergy(solvent_h, *w_id-1, all_coords, all_charges, all_vdw, img_info);
             // begin iterating over current water's hydrogen atoms
-            for (wat_h = w_id; wat_h <= w_id+1; wat_h++){
+            for (wat_h = *w_id; wat_h <= *w_id+1; wat_h++){
                 //printf("current water's H atom ID: %i\n", wat_h);
                 E_wat += calcEnergy(solvent_h, wat_h, all_coords, all_charges, all_vdw, img_info);
                 } // end iterating over current water's hydrogen atoms
@@ -262,9 +270,9 @@ void energy( double * ox, double * oy, double * oz,
     
         for (solvent_ps_i = 0; solvent_ps_i < n_pseudo_sites; solvent_ps_i++){
             //printf("Target Water pseudo site %i with global index %i\n", solvent_ps_i, pseudo_begin_id + offset*n_pseudo_sites + solvent_ps_i); // gid = w_id - 1 + wat_at_i - oxygen_index
-            E_wat += calcEnergy(pseudo_begin_id + offset2*n_pseudo_sites + solvent_ps_i, w_id-1, all_coords, all_charges, all_vdw, img_info);
+            E_wat += calcEnergy(pseudo_begin_id + offset2*n_pseudo_sites + solvent_ps_i, *w_id-1, all_coords, all_charges, all_vdw, img_info);
             // begin iterating over current water's hydrogen atoms
-            for (wat_h = w_id; wat_h <= w_id+1; wat_h++){
+            for (wat_h = *w_id; wat_h <= *w_id+1; wat_h++){
                 //printf("current water's H atom ID: %i\n", wat_h);
                 E_wat += calcEnergy(wat_h, pseudo_begin_id + offset2*n_pseudo_sites + solvent_ps_i, all_coords, all_charges, all_vdw, img_info);
                 } // end iterating over current water's hydrogen atoms
@@ -315,7 +323,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     {
     // variables reterived from python
     int frames, start_frame, num_atoms; // total number of frames and atoms in the system
-    PyObject *getCoords, *arglist_getCoords; // python function, its argument tuple and variable to store its results
+    PyObject*getCoords, *arglist_getCoords; // python function, its argument tuple and variable to store its results
     PyObject *sendWatCoords, *arglist_sendWatCoords;// python function, its argument tuple and variable to store its results
     // Following variables are pointers to arrays that come from Python and contain various important pieces of info
     PyObject *coords; // coordinates for all atoms, retrieved through a python callback, are stored in this array
@@ -419,7 +427,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                         // obtain the voxel ID for this water
                         voxel_id = ((int)grid_index_x*(int)*(double *)PyArray_GETPTR1(grid_dim, 1) + (int)grid_index_y)*(int)*(double *)PyArray_GETPTR1(grid_dim, 2) + (int)grid_index_z;
                         // Energy calculations
-                        energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, *wat_id, voxel_id);
+                        energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, wat_id, voxel_id);
                         //energy_ww(wat_x, wat_y, wat_z, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, *wat_id, voxel_id, n_wat);
                         // get hydrogen atom coords
                         h1x = (double *)PyArray_GETPTR2(coords, *wat_id, 0);
@@ -431,7 +439,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                         //printf("Energy value for this voxel: %f\n",*(double *)PyArray_GETPTR2(voxel_data, voxel_id, 13));
                         //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
                         // send water x, y, z to python
-                        arglist_sendWatCoords = Py_BuildValue("(iddddddddd)", voxel_id, *wat_x, *wat_y, *wat_z, *h1x, *h1y, *h1z, *h2x, *h2y, *h2z);
+                        arglist_sendWatCoords = Py_BuildValue("(iddddddddd)", voxel_id, wat_x, wat_y, wat_z, h1x, h1y, h1z, h2x, h2y, h2z);
                         PyEval_CallObject(sendWatCoords, arglist_sendWatCoords);
                         //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
                         //printf("grid indices %f %f %f\n", grid_index_x, grid_index_y, grid_index_z);
@@ -454,6 +462,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
             }
         //printf("waters inside grid! %i\n", frame_wat);
         }
+        free(coords);
     return Py_BuildValue("i", 1);
     
     }
