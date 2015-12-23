@@ -23,6 +23,7 @@ __version__ = "$Revision: $ $Date: $"
   For a desmond installation of python 2.5 (change path up to desmond directory, rest should be the same):
   
   gcc -O3 -lm -fPIC -shared -I /home/kamran/desmond/mmshare-v24012/lib/Linux-x86_64/include/python2.7 -I /home/kamran/desmond/mmshare-v24012/lib/Linux-x86_64/lib/python2.7/site-packages/numpy/core/include/ -o _gistcalcs.so _gistcalcs.c
+  gcc -O3 -lm -fPIC -shared -I /opt/schrodinger2014-2/mmshare-v26017/lib/Linux-x86_64/include/python2.7/ -I /opt/schrodinger2014-2/mmshare-v26017/lib/Linux-x86_64/lib/python2.7/site-packages/numpy/core/include/ -o _gistcalcs.so _gistcalcs.c
   
   For a default installation of python 2.5:
   
@@ -52,6 +53,7 @@ double dist_mic(double* x1, double* x2, double* x3, double* y1, double* y2, doub
     if (dz > *b3/2.0) dz -= *b3; 
     else if (dz < -*b3/2.0) dz += *b3;
     return sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+
     }
     
 double dist(double x1, double x2, double x3, double y1, double y2, double y3) {
@@ -112,6 +114,24 @@ double calcEnergy(int at1, int at2,
     LJ = (aij/dist12)+(bij/dist6);
     totalEnergy = Elec + LJ;
     //printf("Energy between %i and %i: %f\n", at1, at2, totalEnergy);
+    //Py_DECREF(pos);
+    /*
+    Py_DECREF(b_x);
+    Py_DECREF(b_y);
+    Py_DECREF(b_z);
+    Py_DECREF(at1x);
+    Py_DECREF(at1y);
+    Py_DECREF(at1z);
+    Py_DECREF(at1c);
+    Py_DECREF(at1sig);
+    Py_DECREF(at1eps);
+    Py_DECREF(at2x);
+    Py_DECREF(at2y);
+    Py_DECREF(at2z);
+    Py_DECREF(at2c);
+    Py_DECREF(at2sig);
+    Py_DECREF(at2eps);
+    */
     return totalEnergy;
     }
 
@@ -303,18 +323,31 @@ void energy( double * ox, double * oy, double * oz,
         *(double *)PyArray_GETPTR2(voxel_data, v_id, 16) += E_nbr/(nbrs*2.0);
         *(double *)PyArray_GETPTR2(voxel_data, v_id, 18) += nbrs;
         }
-
-
+    
+    Py_DECREF(ox);
+    Py_DECREF(o_c);
+    Py_DECREF(o_sig);
+    Py_DECREF(o_eps);
+    /*
+    Py_DECREF(wy);
+    Py_DECREF(wz);
+    Py_DECREF(w_c);
+    Py_DECREF(w_sig);
+    Py_DECREF(w_eps);
+    Py_DECREF(b_x);
+    Py_DECREF(b_y);
+    Py_DECREF(b_z);
+    */
     } // end energy calculation
 
 
 
 
 PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
-    {
+{
     // variables reterived from python
     int frames, start_frame, num_atoms; // total number of frames and atoms in the system
-    PyObject *sendWatCoords, *arglist_sendWatCoords;// python function, its argument tuple and variable to store its results
+    PyObject *sendWatCoords, *arglist_sendWatCoords, *call_result;// python function, its argument tuple and variable to store its results
     // Following variables are pointers to arrays that come from Python and contain various important pieces of info
     PyObject *coords; // coordinates for all atoms, retrieved through a python callback, are stored in this array
     PyArrayObject *all_at_ids, *solute_at_ids, *wat_oxygen_ids, *wat_all_ids;
@@ -328,6 +361,7 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     int n_wat;    
     double grid_max_x, grid_max_y, grid_max_z;
     double grid_orig_x, grid_orig_y, grid_orig_z;
+    int grid_dim_x, grid_dim_y, grid_dim_z;
     double grid_index_x, grid_index_y, grid_index_z; 
     double *wat_x, *wat_y, *wat_z;
     double *h1x, *h1y, *h1z, *h2x, *h2y, *h2z;
@@ -335,6 +369,9 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     double wat_dist;
     int n_atomic_sites, n_pseudo_sites, wat_begin_id, pseudo_begin_id, oxygen_index;
     int voxel_id;
+
+    double wat_translated_x, wat_translated_y, wat_translated_z;
+
     // Argument parsing to reterive everything sent from Python correctly    
     if (!PyArg_ParseTuple(args, "iOO!O!O!O!O!O!O!O!O!O!O!O!:processGrid",
                             &num_atoms, &sendWatCoords,
@@ -355,11 +392,12 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
         }
     // Consistency checks for Python Callback
 
-    if (!PyCallable_Check(sendWatCoords)) {
+    if (!PyCallable_Check(sendWatCoords))
+    {
         PyErr_Format(PyExc_TypeError,
                      "function is not callcable");
         return NULL;
-        }
+    }
 
     // Set grid max points and grid origin
     grid_max_x = *(double *)PyArray_GETPTR1(grid_dim, 0) * 0.5 + 1.5;
@@ -368,6 +406,9 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
     grid_orig_x = *(double *)PyArray_GETPTR1(grid_orig, 0);
     grid_orig_y = *(double *)PyArray_GETPTR1(grid_orig, 1);
     grid_orig_z = *(double *)PyArray_GETPTR1(grid_orig, 2);
+    grid_dim_x = (int)*(double *)PyArray_GETPTR1(grid_dim, 0);
+    grid_dim_y = (int)*(double *)PyArray_GETPTR1(grid_dim, 1);
+    grid_dim_z = (int)*(double *)PyArray_GETPTR1(grid_dim, 2);
     //printf("grid origin: %f %f %f \n", grid_orig_x , grid_orig_y, grid_orig_z);
     //printf("grid max: %f %f %f \n", grid_max_x , grid_max_y, grid_max_z);
     //printf("grid dim: %i %i %i \n", (int)*(double *)PyArray_GETPTR1(grid_dim, 0), (int)*(double *)PyArray_GETPTR1(grid_dim, 1), (int)*(double *)PyArray_GETPTR1(grid_dim, 2));
@@ -383,31 +424,35 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
 
     // voxel_id initialized to zero (for each water it's voxel ID will be stored in this variable) 
     // Now we need to iterate over every water atom inside grid for its voxel assignment
-    for (i_wat = 0; i_wat < n_wat; i_wat ++) {
+    for (i_wat = 0; i_wat < n_wat; i_wat ++) 
+    {
         wat_id = (int *) PyArray_GETPTR1(wat_oxygen_ids, i_wat); // obtain index for this atom (this is not array index, this is unique atom id)
         // use water ID to get the correct x, y, z coordinates from coord array
         wat_x = (double *)PyArray_GETPTR2(coords, *wat_id-1, 0);
         wat_y = (double *)PyArray_GETPTR2(coords, *wat_id-1, 1); 
         wat_z = (double *)PyArray_GETPTR2(coords, *wat_id-1, 2);
+        wat_translated_x = *wat_x - grid_orig_x;
+        wat_translated_y = *wat_y - grid_orig_y;
+        wat_translated_z = *wat_z - grid_orig_z;
         //printf("water oxygen ID %i and coordinates %f %f %f\n", *wat_id, *wat_x, *wat_y, *wat_z);
         // check if the distance between wateer coordinates and grid origin is less than the max grid point
         // this means do calculations only waters inside the grid
-        if (*wat_x - grid_orig_x <= grid_max_x && *wat_y - grid_orig_y <= grid_max_y && *wat_z - grid_orig_z <= grid_max_z &&
-            *wat_x - grid_orig_x >= -1.5 && *wat_y - grid_orig_y >= -1.5 && *wat_z - grid_orig_z >= -1.5){
-                //printf("water %i is inside the grid!\n", *wat_id);
-            if (*wat_x - grid_orig_x >= 0 && *wat_y - grid_orig_y >= 0 && *wat_z - grid_orig_z >= 0){
+        if (wat_translated_x <= grid_max_x && wat_translated_y <= grid_max_y && wat_translated_z <= grid_max_z &&
+            wat_translated_x >= -1.5 && wat_translated_y >= -1.5 && wat_translated_z >= -1.5)
+        {
+            if (wat_translated_x >= 0 && wat_translated_y >= 0 && wat_translated_z >= 0)
+            {
                 // transform water coordinates in units of grid dimensions
-                grid_index_x = (*wat_x - grid_orig_x)/0.5;
-                grid_index_y = (*wat_y - grid_orig_y)/0.5;
-                grid_index_z = (*wat_z - grid_orig_z)/0.5;
+                grid_index_x = (int) (wat_translated_x/0.5);
+                grid_index_y = (int) (wat_translated_y/0.5);
+                grid_index_z = (int) (wat_translated_z/0.5);
                 // check if water coords (in grid dimensions) are less than grid dimensions in each direction
-                if (grid_index_x < (int)*(double *)PyArray_GETPTR1(grid_dim, 0) &&
-                    grid_index_y < (int)*(double *)PyArray_GETPTR1(grid_dim, 1) &&
-                    grid_index_z < (int)*(double *)PyArray_GETPTR1(grid_dim, 2)){
+                if (grid_index_x < grid_dim_x && grid_index_y < grid_dim_y && grid_index_z < grid_dim_z)
+                {
                     // obtain the voxel ID for this water
-                    voxel_id = ((int)grid_index_x*(int)*(double *)PyArray_GETPTR1(grid_dim, 1) + (int)grid_index_y)*(int)*(double *)PyArray_GETPTR1(grid_dim, 2) + (int)grid_index_z;
+                    //voxel_id = ((int)grid_index_x*(int)*(double *)PyArray_GETPTR1(grid_dim, 1) + (int)grid_index_y)*(int)*(double *)PyArray_GETPTR1(grid_dim, 2) + (int)grid_index_z;
+                    voxel_id = (grid_index_x*grid_dim_y + grid_index_y)*grid_dim_z + grid_index_z;
                     // Energy calculations
-                    energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, wat_id, voxel_id);
                     //energy_ww(wat_x, wat_y, wat_z, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, *wat_id, voxel_id, n_wat);
                     // get hydrogen atom coords
                     h1x = (double *)PyArray_GETPTR2(coords, *wat_id, 0);
@@ -419,8 +464,12 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                     //printf("Energy value for this voxel: %f\n",*(double *)PyArray_GETPTR2(voxel_data, voxel_id, 13));
                     //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
                     // send water x, y, z to python
-                    arglist_sendWatCoords = Py_BuildValue("(iddddddddd)", voxel_id, wat_x, wat_y, wat_z, h1x, h1y, h1z, h2x, h2y, h2z);
-                    PyEval_CallObject(sendWatCoords, arglist_sendWatCoords);
+                    arglist_sendWatCoords = Py_BuildValue("(iddddddddd)", voxel_id, *wat_x, *wat_y, *wat_z, *h1x, *h1y, *h1z, *h2x, *h2y, *h2z);
+                    call_result = PyEval_CallObject(sendWatCoords, arglist_sendWatCoords);
+                    Py_DECREF(arglist_sendWatCoords);
+                    Py_DECREF(call_result);
+                    energy(wat_x, wat_y, wat_z, solute_at_ids, wat_oxygen_ids, coords, charges, vdw, box, voxel_data, wat_index_info, wat_id, voxel_id);
+                   
                     //printf("water coords %f %f %f\n", *wat_x, *wat_y, *wat_z);
                     //printf("grid indices %f %f %f\n", grid_index_x, grid_index_y, grid_index_z);
                     //printf("grid indices %i %i %i\n", (int)grid_index_x, (int)grid_index_y, (int)grid_index_z);
@@ -434,15 +483,39 @@ PyObject *_gistcalcs_processGrid(PyObject *self, PyObject *args)
                     //*(int *) PyArray_GETPTR2(voxel_data, voxel_id, 3) += 1.0;
                     // 
                     //printf("voxel id: %i\n", voxel_id);
-                    
-                    }
                 }
             }
-        //printf("wat_id x y z max_x max_y max_z: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f \n", *wat_id, *wat_x, *wat_y, *wat_z, *grid_max_x, *grid_max_y, *grid_max_z);
         }
-    return Py_BuildValue("i", 1);
-    
+        //printf("wat_id x y z max_x max_y max_z: %i %5.3f %5.3f %5.3f %5.3f %5.3f %5.3f \n", *wat_id, *wat_x, *wat_y, *wat_z, *grid_max_x, *grid_max_y, *grid_max_z);
     }
+    Py_DECREF(coords);
+    Py_DECREF(sendWatCoords);
+    
+    /*
+    Py_DECREF(wat_x);
+    Py_DECREF(wat_y);
+    Py_DECREF(wat_z);
+    Py_DECREF(h1x);
+    Py_DECREF(h1y);
+    Py_DECREF(h1z);
+    Py_DECREF(h2x);
+    Py_DECREF(h2y);
+    Py_DECREF(h2z);
+    */
+    //Py_DECREF(all_at_ids);
+    //Py_DECREF(solute_at_ids);
+    //Py_DECREF(wat_oxygen_ids);
+    //Py_DECREF(wat_all_ids);
+    //Py_DECREF(charges);
+    //Py_DECREF(vdw);
+    //Py_DECREF(box);
+    //Py_DECREF(grid_dim);
+    //Py_DECREF(grid_orig);
+    //Py_DECREF(voxel_data);
+    //Py_DECREF(wat_index_info);
+
+    return Py_BuildValue("i", 1);
+}
 
 PyObject *_gistcalcs_getNNOr(PyObject *self, PyObject *args){
     int nwtot, n, l;

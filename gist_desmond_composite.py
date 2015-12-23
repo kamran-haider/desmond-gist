@@ -42,7 +42,7 @@ import numpy as np
 #from scipy.spatial import KDTree, cKDTree
 import sys, time
 #import math
-
+import resource
 #################################################################################################################
 # Main GIST class                                                                                               #
 #################################################################################################################
@@ -52,18 +52,21 @@ import sys, time
 class Gist:
 #*********************************************************************************************#
     # Initializer function
-    def __init__(self, input_cmsname, input_trjname, center, resolution, dimensions):
+    def __init__(self, start_frame, n_frame, input_cmsname, input_trjname, center, resolution, dimensions):
         """
         Data members
         """
         self.cmsname = input_cmsname
         self.dsim = create_simulation(input_cmsname, input_trjname)
+        self.start_frame = start_frame
+        self.n_frame = n_frame
         self._indexGenerator()
         self._initializeGrid(center, resolution, dimensions)
         self.voxeldata, self.voxeldict = self._initializeVoxelDict()
         self.chg, self.vdw = self._getNonbondedParams()
         self.box = self._initializePBC()
-
+        #voxel_wat_map = np.array([self.n_frame, len(self.wat_oxygen_atom_ids), 6])
+        #self.voxel_wat_map = np.zeros(voxel_wat_map, dtype="float64")
 #*********************************************************************************************#
     # index generator function
     def _indexGenerator(self):
@@ -361,22 +364,35 @@ class Gist:
         # perform nearest neighbor search for each water for this voxel
         # first in translational space
         self.voxeldict[voxel_id][0].append([theta, phi, psi])
+        #print "\tCurrent memory of voxel dictionary: %5.3f kbs" % (sys.getsizeof(self.voxeldict)/1000.0)
         #angle_array = np.asarray(angle_array, dtype="float64")
     
 #*********************************************************************************************#
     # Energy Function
-    def getVoxelEnergies(self, n_frame, s_frame):
+    def getVoxelEnergies(self):
         # testing new GIST module
+        size_pyobjects = sys.getsizeof(self.voxeldata/1000.0) + sys.getsizeof(self.voxeldict)/1000.0 + sys.getsizeof(self.vdw/1000.0) + sys.getsizeof(self.chg)/1000.0
+        #print "\tSize of objects sent to C: %5.3f kbs." % (size_pyobjects)
         wat_index_info = np.array([self.n_atom_sites, self.n_pseudo_sites, self.wat_begin_gid, self.pseudo_begin_gid, self.oxygen_index], dtype="int")
-
-        for i in xrange(s_frame, s_frame + n_frame):
+        mem_init = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        mem_voxel_dict = sys.getsizeof(self.voxeldict)/1000.0
+        #print "\tInitial size of voxel dictionary: %5.3f kbs." % (mem_voxel_dict)
+        #print "\tInitial Memory usage: %5.3f kbs." % (mem_init)
+        for i in xrange(self.start_frame, self.start_frame + self.n_frame):
             print "Processing frame: ", i+1, "..."
             # get frame structure, position array
             frame = self.dsim.getFrame(i)
             #measure_manager = PBCMeasureMananger(frame)
             frame_st = self.dsim.getFrameStructure(i)
             pos = frame.position
+            #print hex(id(pos))
             gistcalcs.processGrid(len(self.all_atom_ids), self.getvoxelWatCoords, pos, wat_index_info, self.all_atom_ids, self.non_water_atom_ids, self.wat_oxygen_atom_ids, self.wat_atom_ids, self.chg, self.vdw, self.box, self.dims.astype("float"), self.origin, self.voxeldata)
+            #print hex(id(pos))
+            #curr_mem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            #print "\t Current memory usage (kbs): ", curr_mem
+
+        mem_final = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        print "\tMemory usage: %f mbs." % ((mem_final - mem_init)/1000.0)
 
 #*********************************************************************************************#
     def getVoxelEntropies(self, n_frame, res, logfile):
@@ -389,6 +405,7 @@ class Gist:
         dTSor_tot = 0.0
         total_mem = 0
         print "Memory taken up for by rest of the grid in Kbs",  sys.getsizeof(self.voxeldata)/1000
+        print "Memory taken up for by rest of the grid in Kbs", sys.getsizeof(self.voxeldict)/1000.0
         # begin iterating over voxels
         for k in self.voxeldict.keys():
             # only for voxels with more than one water
