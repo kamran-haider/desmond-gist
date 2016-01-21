@@ -7,7 +7,7 @@ Created on Thu Apr  2 15:03:09 2015
 
 
 #*********************************************************************************************#
-import time
+import time, resource
 import numpy as np
 from schrodinger import structure
 from optparse import OptionParser
@@ -23,8 +23,8 @@ parser.add_option("-o", "--output", dest="outfile", type="string", help="Output 
 
 (options, args) = parser.parse_args()
 print "Setting up GIST calculations."
-#lig = structure.StructureReader(options.ligand).next()
-#gridcntr = sum(lig.getXYZ())/len(lig.atom)
+lig = structure.StructureReader(options.ligand).next()
+gridcntr = sum(lig.getXYZ())/len(lig.atom)
 ############################################################################
 # Edit this section for different systems
 #gridspacn = [ 0.5, 0.5, 0.5 ]
@@ -32,11 +32,16 @@ print "Setting up GIST calculations."
 #griddim = [ 10, 10, 10 ]
 # jgough test
 gridspacn = [ 0.5, 0.5, 0.5 ]
-gridcntr = np.array([58.253, 42.705, 64.575]) 
-griddim = [ 28, 26, 44 ]
+#gridcntr = np.array([58.253, 42.705, 64.575]) 
+griddim = [ 50, 50, 50 ]
 
 ############################################################################
-g = Gist(options.cmsname, options.trjname, gridcntr, gridspacn, griddim)
+
+
+
+
+g = Gist(options.start_frame, options.frames, options.cmsname, options.trjname, gridcntr, gridspacn, griddim)
+print "\tMemory consumption at Initialization: %5.3f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1000)
 gist_logfile = open("desmond-gist-energy.log", "w") 
 gist_logfile.write("#Grid setup for the system in DX header format:\n")
 #gist_logfile.write('# Data calculated by the VMD volmap function\n')
@@ -47,15 +52,15 @@ gist_logfile.write('delta 0 %.1f 0\n' % (g.spacing[1]))
 gist_logfile.write('delta 0 0 %.1f\n' % (g.spacing[2]))
 gist_logfile.write('object 2 class gridconnections counts %d %d %d\n' % (g.grid.shape[0], g.grid.shape[1], g.grid.shape[2]))
 gist_logfile.write('object 3 class array type double rank 0 items %d data follows\n' % (g.grid.shape[0]*g.grid.shape[1]*g.grid.shape[2]))
-gist_logfile.write("#EndHeader\n")
+#gist_logfile.write("#EndHeader\n")
 print "Performing energy calculations ..."
 t = time.time()
-g.getVoxelEnergies(options.frames, options.start_frame)
+g.getVoxelEnergies()
 print "energy calcs took seconds.", time.time() - t
 g.normalizeVoxelQuantities(options.frames, gist_logfile)
 t = time.time()
 #print "Performing entropy calculations ..."
-#g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
+g.getVoxelEntropies(options.frames, 0.5, gist_logfile)
 #print "entropy calcs took seconds.", time.time() - t    
 g.writeGistData(options.outfile)
 gist_logfile.close()
